@@ -8,7 +8,7 @@ import { CLUSTER_VARIABLE, NS_VARIABLE, PROM_DS_VARIABLE, ROUTES, SUBSCRIPTION_V
 import { GetClusterByWorkloadQueries, TransfomClusterByWorkloadData } from '../Queries/ClusterByWorkloadQueries';
 import { GetClustersQuery } from '../Queries/ClusterMappingQueries';
 import { azure_monitor_queries } from '../Queries/queries';
-import { createMappingFromSeries, getInstanceDatasourcesForType, getPromDatasource, getSceneQueryRunner } from '../Queries/queryUtil';
+import { createMappingFromSeries, getInstanceDatasourcesForType, getPromDatasource, getSceneQueryRunner, PROM_DS_TYPES } from '../Queries/queryUtil';
 import { getPrometheusVariable } from '../Variables/variables';
 import { getAlertSummaryDrilldownPage } from './AlertSummaryDrilldown';
 import { getComputeResourcesDrilldownPage } from './ComputeResourcesDrilldown';
@@ -27,7 +27,7 @@ export function getClusterByWorkloadScene(pluginReporter: Reporter) {
   const sceneUrl = prefixRoute(ROUTES.Workloads);
   // always check first that there is at least one azure monitor datasource
   const azMonDatasources = getInstanceDatasourcesForType('grafana-azure-monitor-datasource');
-  const promDatasources = getInstanceDatasourcesForType('prometheus');
+  const promDatasources = getInstanceDatasourcesForType(PROM_DS_TYPES);
   const reporter = 'Scene.Main.WorkloadsScene';
   const bothDatasourcesMissing = azMonDatasources.length === 0 && promDatasources.length === 0;
     if (azMonDatasources.length === 0) {

@@ -5,6 +5,10 @@ import { ClusterMapping } from "types";
 import { AZMON_DS_VARIABLE } from "../../../constants";
 import { MetricsQueryDimensionFiter } from "./types";
 
+// Datasource plugin types that represent a Prometheus-compatible datasource.
+// Azure Monitor Managed Prometheus can surface either as the core "prometheus"
+// plugin (with Azure auth) or as the dedicated "grafana-azureprometheus-datasource".
+export const PROM_DS_TYPES = ["prometheus", "grafana-azureprometheus-datasource"];
 
 export function getAzureResourceGraphQuery(query: string, subscription: string, refId: string) {
      return {
@@ -96,7 +100,7 @@ export function getSceneQueryRunner(queries: DataQuery[]): SceneQueryRunner {
 }
 export function createMappingFromSeries(workspaces: string[], workspaceIds: string[], clusters: string[], clusterIds: string[],  laws?: string[]): Record<string, ClusterMapping> {
     const datasourceSrv  = getDataSourceSrv();
-    const promDatasources = datasourceSrv.getList().filter((ds) => ds.type === "prometheus") ?? [];
+    const promDatasources = datasourceSrv.getList().filter((ds) => PROM_DS_TYPES.includes(ds.type)) ?? [];
     const clusterMappings: Record<string, ClusterMapping> = {};
     for (let clusterIdx = 0; clusterIdx < clusters.length; clusterIdx++) {
       const cluster = clusters[clusterIdx];
@@ -151,9 +155,10 @@ export function getPromDatasource(clusterMappings: Record<string, ClusterMapping
     return undefined;
 }
 
-export function getInstanceDatasourcesForType(dsType: string) {
+export function getInstanceDatasourcesForType(dsTypes: string | string[]) {
+    const types = Array.isArray(dsTypes) ? dsTypes : [dsTypes];
     const datasourceSrv  = getDataSourceSrv();
-    const foundDatasources = datasourceSrv.getList().filter((ds) => ds.type === dsType) ?? [];
+    const foundDatasources = datasourceSrv.getList().filter((ds) => types.includes(ds.type)) ?? [];
 
     return foundDatasources;
 }
