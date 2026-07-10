@@ -8,7 +8,7 @@ import { CLUSTER_VARIABLE, PROM_DS_VARIABLE, ROUTES, SUBSCRIPTION_VARIABLE, VAR_
 import { GetClusterOverviewSceneQueries, TranformClusterOverviewData } from "../Queries/ClusterByNamespaceQueries";
 import { GetClustersQuery } from "../Queries/ClusterMappingQueries";
 import { azure_monitor_queries } from "../Queries/queries";
-import { createMappingFromSeries, getInstanceDatasourcesForType, getPromDatasource, getSceneQueryRunner } from "../Queries/queryUtil";
+import { createMappingFromSeries, getInstanceDatasourcesForType, getPromDatasource, getSceneQueryRunner, PROM_DS_TYPES } from "../Queries/queryUtil";
 import { getAlertSummaryDrilldownPage } from "./AlertSummaryDrilldown";
 import { getBehaviorsForVariables, getGenericSceneAppPage, getMissingDatasourceScene, getSharedSceneVariables, variableShouldBeCleared } from "./sceneUtils";
 
@@ -19,7 +19,7 @@ export function getNamespacesScene(pluginReporter: Reporter): SceneAppPage {
     const reporter = "Scene.Main.NamespacesScene";
     // always check first that there is at least one azure monitor datasource
     const azMonDatasources = getInstanceDatasourcesForType("grafana-azure-monitor-datasource");
-    const promDatasources = getInstanceDatasourcesForType("prometheus");
+    const promDatasources = getInstanceDatasourcesForType(PROM_DS_TYPES);
     const bothDatasourcesMissing = azMonDatasources.length === 0 && promDatasources.length === 0;
     if (azMonDatasources.length === 0) {
       const textToShow = bothDatasourcesMissing ? "Azure Monitor or Prometheus" : "Azure Monitor";

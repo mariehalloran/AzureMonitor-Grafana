@@ -6,7 +6,7 @@ import { stringify } from "utils/stringify";
 import { AGG_VAR, AZMON_DS_VARIABLE, ROUTES, SUBSCRIPTION_VARIABLE, VAR_ALL } from "../../../constants";
 import { GetClustersQuery, GetClusterStatsQueries, TransformData } from "../Queries/ClusterMappingQueries";
 import { azure_monitor_queries } from "../Queries/queries";
-import { createMappingFromSeries, getInstanceDatasourcesForType } from "../Queries/queryUtil";
+import { createMappingFromSeries, getInstanceDatasourcesForType, PROM_DS_TYPES } from "../Queries/queryUtil";
 import { getCustomVariable, getDataSourcesVariableForType, getSubscriptionVariable } from "../Variables/variables";
 import { getBehaviorsForVariables, getGenericSceneAppPage, getMissingDatasourceScene, variableShouldBeCleared } from "./sceneUtils";
 import { prefixRoute } from "utils/utils.routing";
@@ -18,7 +18,7 @@ export function getclustersScene(pluginReporter: Reporter): SceneAppPage {
     const sceneUrl = prefixRoute(ROUTES.Clusters);
     // always check first that there is at least one azure monitor datasource
     const azMonDatasources = getInstanceDatasourcesForType("grafana-azure-monitor-datasource");
-    const promDatasources = getInstanceDatasourcesForType("prometheus");
+    const promDatasources = getInstanceDatasourcesForType(PROM_DS_TYPES);
     const reporter = "Scene.Main.ClustersScene";
     const bothDatasourcesMissing = azMonDatasources.length === 0 && promDatasources.length === 0;
     if (azMonDatasources.length === 0) {
