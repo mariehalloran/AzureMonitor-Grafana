@@ -9,9 +9,9 @@ A Grafana cloud-native app plugin designed to enhance monitoring capabilities.
 
 ## Overview
 
-This Grafana App Plugin provides a seamless and enhanced monitoring experience for Azure Kubernetes Service (AKS) users. It integrates Azure, AKS, and Prometheus to offer a comprehensive view of your AKS environment.
+This Grafana App Plugin provides curated monitoring experiences for Azure Kubernetes Service (AKS) and Azure Health Models. The Health Models preview page calls the `Microsoft.CloudHealth` Health Models API to load models, entities, relationships, and current health states.
 
-This plugin has a dependence on users having configured Azure Monitor and Prometheus plugin with the Azure Monitor managed service for Prom.
+AKS monitoring requires Azure Monitor and Prometheus datasources configured with Azure Monitor managed service for Prometheus. Health Models requires an Azure Monitor datasource whose identity can read `Microsoft.CloudHealth/healthmodels` resources.
 
 ### Key Features
 
@@ -22,6 +22,8 @@ This plugin has a dependence on users having configured Azure Monitor and Promet
 **Curated Azure Monitoring**: The plugin provides a curated Azure monitoring experience within Grafana, making it available in the public Grafana catalog and compatible with various Grafana platforms.
 
 **Enhanced Troubleshooting**: It improves the AKS troubleshooting experience by providing better navigation, a range of supported visualizations, and keeping users in the same context.
+
+**Health Models Preview**: It lists Azure Health Models and summarizes the current health of their entities and relationships. The configured Azure Monitor datasource supplies the authenticated ARM transport, while all feature requests target the `Microsoft.CloudHealth` Health Models API.
 
 ### Benefits
 
@@ -44,6 +46,7 @@ This plugin will be shipped as part of Grafana's [plugin catalog](https://grafan
 - A Grafana instance running on 10.4+
 - An Azure Monitor datasource configured with the right access to your AKS clusters
 - A Prometheus datasource configured with the Azure Monitor Workspace that has been onboarded to monitor your clusters.
+- For Health Models, Azure Reader access to the target `Microsoft.CloudHealth/healthmodels` resources.
 
 <!-----------------------[  Installing  ]-------------------<optional> section below------------------>
 ### Installing
