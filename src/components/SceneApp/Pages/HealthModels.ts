@@ -1,6 +1,5 @@
 import {
   EmbeddedScene,
-  QueryVariable,
   SceneAppPage,
   SceneFlexItem,
   SceneFlexLayout,
@@ -16,6 +15,7 @@ import {
   isHealthModelsMockMode,
   MOCK_HEALTH_MODELS_SUBSCRIPTION_ID,
 } from '../HealthModels/HealthModelsMockApi';
+import { selectFirstAvailableSubscription } from '../HealthModels/subscriptionSelection';
 import { getInstanceDatasourcesForType } from '../Queries/queryUtil';
 import { getDataSourcesVariableForType, getSubscriptionVariable } from '../Variables/variables';
 import { getBehaviorsForVariables, getGenericSceneAppPage, getMissingDatasourceScene } from './sceneUtils';
@@ -125,19 +125,4 @@ function getMockHealthModelsScene(
     url: sceneUrl,
     getScene: () => scene,
   });
-}
-
-function selectFirstAvailableSubscription(subscriptionVariable: QueryVariable) {
-  const { loading, options, value } = subscriptionVariable.state;
-  if (loading) {
-    return;
-  }
-
-  const selectedValue = value ? String(value) : '';
-  const selectedValueExists = options.some((option) => String(option.value) === selectedValue);
-  if (selectedValueExists) {
-    return;
-  }
-
-  subscriptionVariable.changeValueTo(options[0]?.value ?? '');
 }
