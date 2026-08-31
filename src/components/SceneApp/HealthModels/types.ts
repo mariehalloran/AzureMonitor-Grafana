@@ -1,4 +1,4 @@
-export const HEALTH_MODELS_API_VERSION = "2026-09-01-preview";
+export const HEALTH_MODELS_API_VERSION = '2026-09-01-preview';
 
 export interface HealthModelResourceId {
   subscriptionId: string;
@@ -26,7 +26,7 @@ export interface HealthModelEntity {
     healthState?: string;
     impact?: string;
     provisioningState?: string;
-    healthObjective?: number;
+    healthObjective?: number | null;
     tags?: Record<string, string>;
   };
 }

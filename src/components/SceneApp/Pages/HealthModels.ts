@@ -6,32 +6,41 @@ import {
   SceneFlexLayout,
   SceneVariableSet,
   VariableValueSelectors,
-} from "@grafana/scenes";
-import { Reporter } from "reporter/reporter";
-import { ReportType } from "reporter/types";
-import { AZMON_DS_VARIABLE, ROUTES } from "../../../constants";
-import { HealthModelOverview } from "../HealthModels/HealthModelOverview";
-import { getInstanceDatasourcesForType } from "../Queries/queryUtil";
-import { getDataSourcesVariableForType, getSubscriptionVariable } from "../Variables/variables";
-import { getBehaviorsForVariables, getGenericSceneAppPage, getMissingDatasourceScene } from "./sceneUtils";
-import { prefixRoute } from "utils/utils.routing";
+} from '@grafana/scenes';
+import { Reporter } from 'reporter/reporter';
+import { ReportType } from 'reporter/types';
+import { AZMON_DS_VARIABLE, ROUTES } from '../../../constants';
+import { HealthModelOverview } from '../HealthModels/HealthModelOverview';
+import {
+  createHealthModelsMockApi,
+  isHealthModelsMockMode,
+  MOCK_HEALTH_MODELS_SUBSCRIPTION_ID,
+} from '../HealthModels/HealthModelsMockApi';
+import { getInstanceDatasourcesForType } from '../Queries/queryUtil';
+import { getDataSourcesVariableForType, getSubscriptionVariable } from '../Variables/variables';
+import { getBehaviorsForVariables, getGenericSceneAppPage, getMissingDatasourceScene } from './sceneUtils';
+import { prefixRoute } from 'utils/utils.routing';
 
 export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
-  const sceneTitle = "Health Models";
+  const sceneTitle = 'Health Models';
   const sceneUrl = prefixRoute(ROUTES.HealthModels);
-  const reporter = "Scene.Main.HealthModelsScene";
-  const azureMonitorDatasources = getInstanceDatasourcesForType("grafana-azure-monitor-datasource");
+  const reporter = 'Scene.Main.HealthModelsScene';
+  if (isHealthModelsMockMode()) {
+    return getMockHealthModelsScene(sceneTitle, sceneUrl, reporter, pluginReporter);
+  }
+
+  const azureMonitorDatasources = getInstanceDatasourcesForType('grafana-azure-monitor-datasource');
 
   if (azureMonitorDatasources.length === 0) {
     return getGenericSceneAppPage(sceneTitle, sceneUrl, () =>
-      getMissingDatasourceScene("Azure Monitor", reporter, pluginReporter, "an Azure Monitor datasource"),
+      getMissingDatasourceScene('Azure Monitor', reporter, pluginReporter, 'an Azure Monitor datasource')
     );
   }
 
   const datasourceVariable = getDataSourcesVariableForType(
-    "grafana-azure-monitor-datasource",
+    'grafana-azure-monitor-datasource',
     AZMON_DS_VARIABLE,
-    "Azure Monitor Datasource",
+    'Azure Monitor Datasource'
   );
   const subscriptionVariable = getSubscriptionVariable(false, false);
   const variables = [datasourceVariable, subscriptionVariable];
@@ -44,7 +53,7 @@ export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
     $behaviors: getBehaviorsForVariables(variables, pluginReporter),
     controls: [new VariableValueSelectors({})],
     body: new SceneFlexLayout({
-      direction: "column",
+      direction: 'column',
       children: [
         new SceneFlexItem({
           minHeight: 500,
@@ -55,7 +64,7 @@ export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
   });
 
   scene.addActivationHandler(() => {
-    pluginReporter.reportPageView("grafana_plugin_page_view", {
+    pluginReporter.reportPageView('grafana_plugin_page_view', {
       reporter,
       type: ReportType.PageView,
     });
@@ -77,17 +86,58 @@ export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
   });
 }
 
+function getMockHealthModelsScene(
+  sceneTitle: string,
+  sceneUrl: string,
+  reporter: string,
+  pluginReporter: Reporter
+): SceneAppPage {
+  const overview = new HealthModelOverview({
+    apiFactory: createHealthModelsMockApi,
+    fixedContext: {
+      datasourceUid: 'health-models-mock',
+      subscriptionId: MOCK_HEALTH_MODELS_SUBSCRIPTION_ID,
+    },
+    mockMode: true,
+  });
+  const scene = new EmbeddedScene({
+    body: new SceneFlexLayout({
+      direction: 'column',
+      children: [
+        new SceneFlexItem({
+          minHeight: 500,
+          body: overview,
+        }),
+      ],
+    }),
+  });
+
+  scene.addActivationHandler(() => {
+    pluginReporter.reportPageView('grafana_plugin_page_view', {
+      reporter,
+      type: ReportType.PageView,
+      dataSource: 'mock',
+    });
+  });
+
+  return new SceneAppPage({
+    title: sceneTitle,
+    url: sceneUrl,
+    getScene: () => scene,
+  });
+}
+
 function selectFirstAvailableSubscription(subscriptionVariable: QueryVariable) {
   const { loading, options, value } = subscriptionVariable.state;
   if (loading) {
     return;
   }
 
-  const selectedValue = value ? String(value) : "";
+  const selectedValue = value ? String(value) : '';
   const selectedValueExists = options.some((option) => String(option.value) === selectedValue);
   if (selectedValueExists) {
     return;
   }
 
-  subscriptionVariable.changeValueTo(options[0]?.value ?? "");
+  subscriptionVariable.changeValueTo(options[0]?.value ?? '');
 }

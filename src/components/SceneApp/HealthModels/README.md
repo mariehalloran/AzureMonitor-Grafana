@@ -15,13 +15,13 @@ The app now has a **Health Models** tab that:
 
 The implementation is split across the following files:
 
-| File | Responsibility |
-| --- | --- |
-| `../Pages/HealthModels.ts` | Registers the Scene tab and its datasource and subscription variables. |
-| `HealthModelOverview.tsx` | Owns the Scene lifecycle, selection state, asynchronous loading, stale-request protection, and rendering. |
-| `HealthModelsApi.ts` | Calls the Health Models ARM API, validates resource paths, and follows bounded continuation links. |
-| `types.ts` | Defines the subset of the Health Models contract used by this preview. |
-| `healthModelUtils.ts` | Calculates the displayed health-state summary. |
+| File                       | Responsibility                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `../Pages/HealthModels.ts` | Registers the Scene tab and its datasource and subscription variables.                                    |
+| `HealthModelOverview.tsx`  | Owns the Scene lifecycle, selection state, asynchronous loading, stale-request protection, and rendering. |
+| `HealthModelsApi.ts`       | Calls the Health Models ARM API, validates resource paths, and follows bounded continuation links.        |
+| `types.ts`                 | Defines the subset of the Health Models contract used by this preview.                                    |
+| `healthModelUtils.ts`      | Calculates the displayed health-state summary.                                                            |
 
 ## API boundary
 
@@ -66,3 +66,13 @@ Model, entity, and relationship lists can be paged and large. The API adapter fo
 - Relationships are counted but not yet rendered as a dependency graph.
 - Model configuration and write operations are intentionally excluded.
 - The custom Health Models data-plane audience is not used; this experience calls the ARM control-plane API.
+
+## Local visual sandbox
+
+A development build can render the page from a local snapshot without configuring Azure credentials in Grafana. Place the generated snapshot at `dist/health-models-sandbox.json`, start the local Grafana development environment, then open:
+
+```text
+http://localhost:3000/a/azure-monitor-app/clusternavigation/healthmodels?healthModelsMock=1
+```
+
+Mock mode is accepted only when Webpack builds the plugin in development mode. `HealthModelsMockApi.ts` loads the ignored snapshot and implements the same `HealthModelsClient` contract as the production ARM adapter. The page therefore exercises the normal Scene lifecycle, model selection, health summaries, and entity rendering without making Azure requests from the browser. The snapshot can contain subscription resource data and must never be committed.

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="9" failures="0" errors="0" time="1.444">
+  <testsuite name="HealthModelsApi" errors="0" failures="0" skipped="0" timestamp="2026-08-31T21:55:55" time="1.153" tests="8">
+    <testcase classname="HealthModelsApi lists health models through the Microsoft.CloudHealth API" name="HealthModelsApi lists health models through the Microsoft.CloudHealth API" time="0.002">
+    </testcase>
+    <testcase classname="HealthModelsApi follows an absolute ARM continuation link" name="HealthModelsApi follows an absolute ARM continuation link" time="0.001">
+    </testcase>
+    <testcase classname="HealthModelsApi rejects a continuation link for a different collection" name="HealthModelsApi rejects a continuation link for a different collection" time="0">
+    </testcase>
+    <testcase classname="HealthModelsApi marks results as truncated when the page limit is reached" name="HealthModelsApi marks results as truncated when the page limit is reached" time="0.001">
+    </testcase>
+    <testcase classname="Health Models ARM helpers parses a Health Model ARM resource ID" name="Health Models ARM helpers parses a Health Model ARM resource ID" time="0">
+    </testcase>
+    <testcase classname="Health Models ARM helpers rejects a non-Health-Model ARM resource ID" name="Health Models ARM helpers rejects a non-Health-Model ARM resource ID" time="0">
+    </testcase>
+    <testcase classname="Health Models ARM helpers normalizes a relative continuation link" name="Health Models ARM helpers normalizes a relative continuation link" time="0">
+    </testcase>
+    <testcase classname="Health Models ARM helpers returns status-specific authorization and throttling messages" name="Health Models ARM helpers returns status-specific authorization and throttling messages" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="summarizeHealthStates" errors="0" failures="0" skipped="0" timestamp="2026-08-31T21:55:57" time="0.025" tests="1">
+    <testcase classname="summarizeHealthStates counts documented states and groups missing or future values as unknown" name="summarizeHealthStates counts documented states and groups missing or future values as unknown" time="0.001">
+    </testcase>
+  </testsuite>
+</testsuites>

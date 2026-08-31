@@ -5,18 +5,17 @@ import {
   getHealthModelsErrorMessage,
   normalizeArmNextLink,
   parseHealthModelResourceId,
-} from "./HealthModelsApi";
-import { HealthModelEntity } from "./types";
+} from './HealthModelsApi';
+import { HealthModelEntity } from './types';
 
 const MODEL_ID =
-  "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/example-rg/providers/Microsoft.CloudHealth/healthmodels/example-model";
+  '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/example-rg/providers/Microsoft.CloudHealth/healthmodels/example-model';
 
 function createDatasourceMock() {
   const getResource = jest.fn();
   const datasource: AzureMonitorArmDataSource = {
     type: AZURE_MONITOR_DATASOURCE_TYPE,
-    getResource: <T>(path: string, params?: Record<string, unknown>) =>
-      getResource(path, params) as Promise<T>,
+    getResource: <T>(path: string, params?: Record<string, unknown>) => getResource(path, params) as Promise<T>,
   };
 
   return {
@@ -25,30 +24,28 @@ function createDatasourceMock() {
   };
 }
 
-describe("HealthModelsApi", () => {
-  test("lists health models through the Microsoft.CloudHealth API", async () => {
+describe('HealthModelsApi', () => {
+  test('lists health models through the Microsoft.CloudHealth API', async () => {
     const { datasource, getResource } = createDatasourceMock();
     getResource.mockResolvedValue({
       value: [createHealthModel()],
     });
 
-    const result = await new HealthModelsApi(datasource).listHealthModels(
-      "11111111-1111-1111-1111-111111111111",
-    );
+    const result = await new HealthModelsApi(datasource).listHealthModels('11111111-1111-1111-1111-111111111111');
 
     expect(result.items).toEqual([createHealthModel()]);
     expect(getResource).toHaveBeenCalledWith(
-      "azuremonitor/subscriptions/11111111-1111-1111-1111-111111111111/providers/Microsoft.CloudHealth/healthmodels",
+      'azuremonitor/subscriptions/11111111-1111-1111-1111-111111111111/providers/Microsoft.CloudHealth/healthmodels',
       {
-      "api-version": "2026-09-01-preview",
-      },
+        'api-version': '2026-09-01-preview',
+      }
     );
   });
 
-  test("follows an absolute ARM continuation link", async () => {
+  test('follows an absolute ARM continuation link', async () => {
     const { datasource, getResource } = createDatasourceMock();
-    const firstEntity = createEntity("one");
-    const secondEntity = createEntity("two");
+    const firstEntity = createEntity('one');
+    const secondEntity = createEntity('two');
     getResource
       .mockResolvedValueOnce({
         value: [firstEntity],
@@ -68,33 +65,33 @@ describe("HealthModelsApi", () => {
     expect(getResource).toHaveBeenNthCalledWith(
       2,
       `azuremonitor${MODEL_ID}/entities?api-version=2026-09-01-preview&$skiptoken=next`,
-      undefined,
+      undefined
     );
   });
 
-  test("rejects a continuation link for a different collection", async () => {
+  test('rejects a continuation link for a different collection', async () => {
     const { datasource, getResource } = createDatasourceMock();
     getResource.mockResolvedValue({
-      value: [createEntity("one")],
+      value: [createEntity('one')],
       nextLink: `https://management.azure.com${MODEL_ID}/relationships?api-version=2026-09-01-preview`,
     });
 
     await expect(new HealthModelsApi(datasource).listEntities(MODEL_ID)).rejects.toThrow(
-      "continuation link for a different resource collection",
+      'continuation link for a different resource collection'
     );
   });
 
-  test("marks results as truncated when the page limit is reached", async () => {
+  test('marks results as truncated when the page limit is reached', async () => {
     const { datasource, getResource } = createDatasourceMock();
     getResource.mockResolvedValue({
-      value: [createEntity("one")],
+      value: [createEntity('one')],
       nextLink: `https://management.azure.com${MODEL_ID}/entities?api-version=2026-09-01-preview&$skiptoken=next`,
     });
 
     const result = await new HealthModelsApi(datasource, 1).listEntities(MODEL_ID);
 
     expect(result).toEqual({
-      items: [createEntity("one")],
+      items: [createEntity('one')],
       pagesLoaded: 1,
       truncated: true,
     });
@@ -102,35 +99,35 @@ describe("HealthModelsApi", () => {
   });
 });
 
-describe("Health Models ARM helpers", () => {
-  test("parses a Health Model ARM resource ID", () => {
+describe('Health Models ARM helpers', () => {
+  test('parses a Health Model ARM resource ID', () => {
     expect(parseHealthModelResourceId(MODEL_ID)).toEqual({
-      subscriptionId: "11111111-1111-1111-1111-111111111111",
-      resourceGroupName: "example-rg",
-      healthModelName: "example-model",
+      subscriptionId: '11111111-1111-1111-1111-111111111111',
+      resourceGroupName: 'example-rg',
+      healthModelName: 'example-model',
     });
   });
 
-  test("rejects a non-Health-Model ARM resource ID", () => {
+  test('rejects a non-Health-Model ARM resource ID', () => {
     expect(() =>
       parseHealthModelResourceId(
-        "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/example-rg/providers/Microsoft.Compute/virtualMachines/example",
-      ),
-    ).toThrow("not a valid Microsoft.CloudHealth health model resource ID");
+        '/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/example-rg/providers/Microsoft.Compute/virtualMachines/example'
+      )
+    ).toThrow('not a valid Microsoft.CloudHealth health model resource ID');
   });
 
-  test("normalizes a relative continuation link", () => {
+  test('normalizes a relative continuation link', () => {
     expect(
       normalizeArmNextLink(
         `${MODEL_ID}/entities?api-version=2026-09-01-preview&$skiptoken=next`,
-        `${MODEL_ID}/entities`,
-      ),
+        `${MODEL_ID}/entities`
+      )
     ).toBe(`azuremonitor${MODEL_ID}/entities?api-version=2026-09-01-preview&$skiptoken=next`);
   });
 
-  test("returns status-specific authorization and throttling messages", () => {
-    expect(getHealthModelsErrorMessage({ status: 403 })).toContain("not authorized");
-    expect(getHealthModelsErrorMessage({ status: 429 })).toContain("throttled");
+  test('returns status-specific authorization and throttling messages', () => {
+    expect(getHealthModelsErrorMessage({ status: 403 })).toContain('not authorized');
+    expect(getHealthModelsErrorMessage({ status: 429 })).toContain('throttled');
   });
 });
 
@@ -138,10 +135,10 @@ function createEntity(name: string): HealthModelEntity {
   return {
     id: `${MODEL_ID}/entities/${name}`,
     name,
-    type: "Microsoft.CloudHealth/healthmodels/entities",
+    type: 'Microsoft.CloudHealth/healthmodels/entities',
     properties: {
       displayName: name,
-      healthState: "Healthy",
+      healthState: 'Healthy',
     },
   };
 }
@@ -149,7 +146,7 @@ function createEntity(name: string): HealthModelEntity {
 function createHealthModel() {
   return {
     id: MODEL_ID,
-    name: "example-model",
-    type: "Microsoft.CloudHealth/healthmodels",
+    name: 'example-model',
+    type: 'Microsoft.CloudHealth/healthmodels',
   };
 }

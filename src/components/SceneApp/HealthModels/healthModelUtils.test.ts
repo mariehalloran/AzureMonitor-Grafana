@@ -1,15 +1,15 @@
-import { summarizeHealthStates } from "./healthModelUtils";
-import { HealthModelEntity } from "./types";
+import { summarizeHealthStates } from './healthModelUtils';
+import { HealthModelEntity } from './types';
 
-describe("summarizeHealthStates", () => {
-  test("counts documented states and groups missing or future values as unknown", () => {
+describe('summarizeHealthStates', () => {
+  test('counts documented states and groups missing or future values as unknown', () => {
     const entities: HealthModelEntity[] = [
-      createEntity("healthy", "Healthy"),
-      createEntity("degraded", "Degraded"),
-      createEntity("unhealthy", "Unhealthy"),
-      createEntity("unknown", "Unknown"),
-      createEntity("future", "Maintenance"),
-      createEntity("missing"),
+      createEntity('healthy', 'Healthy'),
+      createEntity('degraded', 'Degraded'),
+      createEntity('unhealthy', 'Unhealthy'),
+      createEntity('unknown', 'Unknown'),
+      createEntity('future', 'Maintenance'),
+      createEntity('missing'),
     ];
 
     expect(summarizeHealthStates(entities)).toEqual({
@@ -25,7 +25,7 @@ function createEntity(name: string, healthState?: string): HealthModelEntity {
   return {
     id: `/entities/${name}`,
     name,
-    type: "Microsoft.CloudHealth/healthmodels/entities",
+    type: 'Microsoft.CloudHealth/healthmodels/entities',
     properties: {
       healthState,
     },

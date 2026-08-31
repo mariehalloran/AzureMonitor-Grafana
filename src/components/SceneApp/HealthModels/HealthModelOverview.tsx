@@ -1,5 +1,5 @@
-import { css } from "@emotion/css";
-import { GrafanaTheme2, SelectableValue } from "@grafana/data";
+import { css } from '@emotion/css';
+import { GrafanaTheme2, SelectableValue } from '@grafana/data';
 import {
   DataSourceVariable,
   QueryVariable,
@@ -8,24 +8,25 @@ import {
   SceneObjectState,
   sceneGraph,
   VariableValue,
-} from "@grafana/scenes";
-import { Alert, Badge, Button, Select, Spinner, useStyles2 } from "@grafana/ui";
-import React from "react";
-import { AZMON_DS_VARIABLE, SUBSCRIPTION_VARIABLE } from "../../../constants";
-import { createHealthModelsApi, getHealthModelsErrorMessage, parseHealthModelResourceId } from "./HealthModelsApi";
-import { summarizeHealthStates } from "./healthModelUtils";
+} from '@grafana/scenes';
+import { Alert, Badge, Button, Select, Spinner, useStyles2 } from '@grafana/ui';
+import React from 'react';
+import { AZMON_DS_VARIABLE, SUBSCRIPTION_VARIABLE } from '../../../constants';
 import {
-  HealthModel,
-  HealthModelEntity,
-  HealthModelRelationship,
-  HealthModelResourceId,
-  PagedResult,
-} from "./types";
+  createHealthModelsApi,
+  getHealthModelsErrorMessage,
+  HealthModelsClient,
+  HealthModelsClientFactory,
+  parseHealthModelResourceId,
+} from './HealthModelsApi';
+import { summarizeHealthStates } from './healthModelUtils';
+import { HealthModel, HealthModelEntity, HealthModelRelationship, HealthModelResourceId, PagedResult } from './types';
 
 const MAX_VISIBLE_ENTITIES = 200;
 
 interface HealthModelOverviewState extends SceneObjectState {
   loading: boolean;
+  mockMode: boolean;
   selectionMessage?: string;
   models: PagedResult<HealthModel>;
   selectedModelId?: string;
@@ -44,6 +45,15 @@ interface SettledResult<T> {
   error?: string;
 }
 
+export interface HealthModelOverviewOptions {
+  apiFactory?: HealthModelsClientFactory;
+  fixedContext?: {
+    datasourceUid: string;
+    subscriptionId: string;
+  };
+  mockMode?: boolean;
+}
+
 export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewState> {
   public static Component = HealthModelOverviewRenderer;
 
@@ -52,24 +62,39 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
   private requestGeneration = 0;
   private currentContextKey?: string;
   private activeDatasourceUid?: string;
+  private readonly apiFactory: HealthModelsClientFactory;
+  private readonly fixedContext?: HealthModelOverviewOptions['fixedContext'];
 
-  public constructor() {
+  public constructor(options: HealthModelOverviewOptions = {}) {
     super({
       loading: false,
-      selectionMessage: "Select a subscription to load its health models.",
+      mockMode: options.mockMode ?? false,
+      selectionMessage: 'Select a subscription to load its health models.',
       models: emptyPagedResult(),
       entities: emptyPagedResult(),
       relationships: emptyPagedResult(),
     });
+    this.apiFactory = options.apiFactory ?? createHealthModelsApi;
+    this.fixedContext = options.fixedContext;
 
     this.addActivationHandler(() => {
+      if (this.fixedContext) {
+        this.activeDatasourceUid = this.fixedContext.datasourceUid;
+        void this.loadFromVariables();
+        return () => {
+          this.requestGeneration++;
+          this.currentContextKey = undefined;
+          this.activeDatasourceUid = undefined;
+        };
+      }
+
       this.datasourceVariable = sceneGraph.lookupVariable(AZMON_DS_VARIABLE, this) as DataSourceVariable;
       this.subscriptionVariable = sceneGraph.lookupVariable(SUBSCRIPTION_VARIABLE, this) as QueryVariable;
 
       if (!this.datasourceVariable || !this.subscriptionVariable) {
         this.setState({
           selectionMessage: undefined,
-          modelsError: "The Health Models page variables could not be initialized.",
+          modelsError: 'The Health Models page variables could not be initialized.',
         });
         return;
       }
@@ -127,6 +152,11 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
   };
 
   private async loadFromVariables(force = false) {
+    if (this.fixedContext) {
+      await this.loadContext(this.fixedContext.datasourceUid, this.fixedContext.subscriptionId, force);
+      return;
+    }
+
     const datasourceVariable = this.datasourceVariable;
     const subscriptionVariable = this.subscriptionVariable;
 
@@ -135,12 +165,12 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     }
 
     if (subscriptionVariable.state.loading) {
-      this.invalidateContext("Loading subscriptions for the selected datasource.");
+      this.invalidateContext('Loading subscriptions for the selected datasource.');
       return;
     }
 
     if (subscriptionVariable.state.error) {
-      this.invalidateContext("Unable to load subscriptions for the selected datasource.");
+      this.invalidateContext('Unable to load subscriptions for the selected datasource.');
       this.setState({
         modelsError: getHealthModelsErrorMessage(subscriptionVariable.state.error),
       });
@@ -150,14 +180,18 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     const datasourceUid = singleVariableValue(datasourceVariable.state.value);
     const subscriptionId = singleVariableValue(subscriptionVariable.state.value);
     if (!datasourceUid) {
-      this.invalidateContext("Select an Azure Monitor datasource.");
+      this.invalidateContext('Select an Azure Monitor datasource.');
       return;
     }
     if (!subscriptionId) {
-      this.invalidateContext("Select a subscription to load its health models.");
+      this.invalidateContext('Select a subscription to load its health models.');
       return;
     }
 
+    await this.loadContext(datasourceUid, subscriptionId, force);
+  }
+
+  private async loadContext(datasourceUid: string, subscriptionId: string, force: boolean) {
     const contextKey = `${datasourceUid}|${subscriptionId}`;
     if (!force && this.currentContextKey === contextKey) {
       return;
@@ -183,7 +217,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     });
 
     try {
-      const api = await createHealthModelsApi(datasourceUid);
+      const api = await this.apiFactory(datasourceUid);
       const models = await api.listHealthModels(subscriptionId);
       if (requestGeneration !== this.requestGeneration || !this.isActive) {
         return;
@@ -192,7 +226,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
       if (models.items.length === 0) {
         this.setState({
           loading: false,
-          selectionMessage: "No health models were found in the selected subscription.",
+          selectionMessage: 'No health models were found in the selected subscription.',
           models,
           selectedModelId: undefined,
           resourceId: undefined,
@@ -212,8 +246,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
         resourceId: parseHealthModelResourceId(selectedModel.id),
         model: selectedModel,
         entities: selectedModel.id === this.state.selectedModelId ? this.state.entities : emptyPagedResult(),
-        relationships:
-          selectedModel.id === this.state.selectedModelId ? this.state.relationships : emptyPagedResult(),
+        relationships: selectedModel.id === this.state.selectedModelId ? this.state.relationships : emptyPagedResult(),
       });
       await this.loadSelectedModel(datasourceUid, selectedModel, requestGeneration, api);
     } catch (error) {
@@ -232,10 +265,10 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     datasourceUid: string,
     selectedModel: HealthModel,
     requestGeneration: number,
-    existingApi?: Awaited<ReturnType<typeof createHealthModelsApi>>,
+    existingApi?: HealthModelsClient
   ) {
     try {
-      const api = existingApi ?? (await createHealthModelsApi(datasourceUid));
+      const api = existingApi ?? (await this.apiFactory(datasourceUid));
       const [entitiesResult, relationshipsResult] = await Promise.all([
         settle(api.listEntities(selectedModel.id)),
         settle(api.listRelationships(selectedModel.id)),
@@ -312,7 +345,7 @@ function singleVariableValue(value: VariableValue): string | undefined {
     return value.length === 1 ? String(value[0]) : undefined;
   }
 
-  const stringValue = value === null || value === undefined ? "" : String(value).trim();
+  const stringValue = value === null || value === undefined ? '' : String(value).trim();
   return stringValue || undefined;
 }
 
@@ -322,7 +355,7 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
   const healthStateCounts = summarizeHealthStates(state.entities.items);
   const displayedEntities = [...state.entities.items]
     .sort((left, right) =>
-      (left.properties?.displayName ?? left.name).localeCompare(right.properties?.displayName ?? right.name),
+      (left.properties?.displayName ?? left.name).localeCompare(right.properties?.displayName ?? right.name)
     )
     .slice(0, MAX_VISIBLE_ENTITIES);
   const modelOptions: Array<SelectableValue<string>> = state.models.items.map((healthModel) => {
@@ -359,10 +392,15 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
     );
   }
 
-  const modelName = state.model?.name ?? state.resourceId?.healthModelName ?? "Health Model";
+  const modelName = state.model?.name ?? state.resourceId?.healthModelName ?? 'Health Model';
 
   return (
     <div className={styles.container}>
+      {state.mockMode && (
+        <Alert title="Sandbox data" severity="info">
+          This page is using a local snapshot captured from Azure. The browser is not making Azure requests.
+        </Alert>
+      )}
       <div className={styles.modelSelector}>
         <label htmlFor="health-model-select">Health Model</label>
         <Select<string>
@@ -384,7 +422,7 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
           </div>
           {state.resourceId && (
             <div className={styles.metadata}>
-              Subscription: {state.resourceId.subscriptionId} &middot; Resource group:{" "}
+              Subscription: {state.resourceId.subscriptionId} &middot; Resource group:{' '}
               {state.resourceId.resourceGroupName}
               {state.model?.location && <> &middot; Location: {state.model.location}</>}
               {state.model?.properties?.provisioningState && (
@@ -431,15 +469,18 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
 
       <div className={styles.summaryGrid}>
         <SummaryCard
-          label={state.entities.truncated ? "Loaded entities" : "Entities"}
+          label={state.entities.truncated ? 'Loaded entities' : 'Entities'}
           value={state.entities.pagesLoaded > 0 ? state.entities.items.length : undefined}
         />
         <SummaryCard label="Healthy" value={state.entities.pagesLoaded > 0 ? healthStateCounts.healthy : undefined} />
         <SummaryCard label="Degraded" value={state.entities.pagesLoaded > 0 ? healthStateCounts.degraded : undefined} />
-        <SummaryCard label="Unhealthy" value={state.entities.pagesLoaded > 0 ? healthStateCounts.unhealthy : undefined} />
+        <SummaryCard
+          label="Unhealthy"
+          value={state.entities.pagesLoaded > 0 ? healthStateCounts.unhealthy : undefined}
+        />
         <SummaryCard label="Unknown" value={state.entities.pagesLoaded > 0 ? healthStateCounts.unknown : undefined} />
         <SummaryCard
-          label={state.relationships.truncated ? "Loaded relationships" : "Relationships"}
+          label={state.relationships.truncated ? 'Loaded relationships' : 'Relationships'}
           value={state.relationships.pagesLoaded > 0 ? state.relationships.items.length : undefined}
         />
       </div>
@@ -466,13 +507,9 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
                   <td>
                     <HealthStateBadge healthState={entity.properties?.healthState} />
                   </td>
-                  <td>{entity.properties?.impact ?? "--"}</td>
-                  <td>
-                    {entity.properties?.healthObjective === undefined
-                      ? "--"
-                      : `${entity.properties.healthObjective}%`}
-                  </td>
-                  <td>{entity.properties?.provisioningState ?? "--"}</td>
+                  <td>{entity.properties?.impact ?? '--'}</td>
+                  <td>{entity.properties?.healthObjective == null ? '--' : `${entity.properties.healthObjective}%`}</td>
+                  <td>{entity.properties?.provisioningState ?? '--'}</td>
                 </tr>
               ))}
             </tbody>
@@ -492,7 +529,7 @@ function SummaryCard({ label, value }: { label: string; value?: number }) {
   const styles = useStyles2(getStyles);
   return (
     <div className={styles.summaryCard}>
-      <div className={styles.summaryValue}>{value ?? "--"}</div>
+      <div className={styles.summaryValue}>{value ?? '--'}</div>
       <div className={styles.summaryLabel}>{label}</div>
     </div>
   );
@@ -500,59 +537,59 @@ function SummaryCard({ label, value }: { label: string; value?: number }) {
 
 function HealthStateBadge({ healthState }: { healthState?: string }) {
   switch (healthState?.toLowerCase()) {
-    case "healthy":
+    case 'healthy':
       return <Badge text="Healthy" color="green" />;
-    case "degraded":
+    case 'degraded':
       return <Badge text="Degraded" color="orange" />;
-    case "unhealthy":
+    case 'unhealthy':
       return <Badge text="Unhealthy" color="red" />;
     default:
-      return <Badge text={healthState ?? "Unknown"} color="darkgrey" />;
+      return <Badge text={healthState ?? 'Unknown'} color="darkgrey" />;
   }
 }
 
 function getStyles(theme: GrafanaTheme2) {
   return {
     container: css({
-      width: "100%",
-      height: "100%",
-      overflow: "auto",
+      width: '100%',
+      height: '100%',
+      overflow: 'auto',
       padding: theme.spacing(2),
     }),
     loading: css({
       minHeight: 240,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       gap: theme.spacing(1),
     }),
     modelSelector: css({
       maxWidth: 600,
       marginBottom: theme.spacing(2),
-      "& label": {
-        display: "block",
+      '& label': {
+        display: 'block',
         marginBottom: theme.spacing(0.5),
         color: theme.colors.text.secondary,
         fontWeight: theme.typography.fontWeightMedium,
       },
     }),
     refreshing: css({
-      display: "flex",
-      alignItems: "center",
+      display: 'flex',
+      alignItems: 'center',
       gap: theme.spacing(1),
       color: theme.colors.text.secondary,
       marginBottom: theme.spacing(2),
     }),
     header: css({
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
       gap: theme.spacing(2),
       marginBottom: theme.spacing(2),
     }),
     titleRow: css({
-      display: "flex",
-      alignItems: "center",
+      display: 'flex',
+      alignItems: 'center',
       gap: theme.spacing(1),
     }),
     title: css({
@@ -561,11 +598,11 @@ function getStyles(theme: GrafanaTheme2) {
     metadata: css({
       color: theme.colors.text.secondary,
       marginTop: theme.spacing(0.5),
-      overflowWrap: "anywhere",
+      overflowWrap: 'anywhere',
     }),
     summaryGrid: css({
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
       gap: theme.spacing(1),
       marginBottom: theme.spacing(3),
     }),
@@ -588,30 +625,30 @@ function getStyles(theme: GrafanaTheme2) {
       margin: theme.spacing(0, 0, 1),
     }),
     tableWrapper: css({
-      overflowX: "auto",
+      overflowX: 'auto',
       border: `1px solid ${theme.colors.border.weak}`,
       borderRadius: theme.shape.radius.default,
     }),
     table: css({
-      width: "100%",
-      borderCollapse: "collapse",
-      "& th, & td": {
+      width: '100%',
+      borderCollapse: 'collapse',
+      '& th, & td': {
         padding: theme.spacing(1),
-        textAlign: "left",
+        textAlign: 'left',
         borderBottom: `1px solid ${theme.colors.border.weak}`,
       },
-      "& th": {
+      '& th': {
         color: theme.colors.text.secondary,
         background: theme.colors.background.secondary,
         fontWeight: theme.typography.fontWeightMedium,
       },
-      "& tbody tr:last-child td": {
+      '& tbody tr:last-child td': {
         borderBottom: 0,
       },
     }),
     empty: css({
       padding: theme.spacing(3),
-      textAlign: "center",
+      textAlign: 'center',
       color: theme.colors.text.secondary,
       border: `1px solid ${theme.colors.border.weak}`,
       borderRadius: theme.shape.radius.default,

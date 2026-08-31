@@ -1,4 +1,4 @@
-import { HealthModelEntity } from "./types";
+import { HealthModelEntity } from './types';
 
 export interface HealthStateCounts {
   healthy: number;
@@ -11,13 +11,13 @@ export function summarizeHealthStates(entities: HealthModelEntity[]): HealthStat
   return entities.reduce<HealthStateCounts>(
     (counts, entity) => {
       switch (entity.properties?.healthState?.toLowerCase()) {
-        case "healthy":
+        case 'healthy':
           counts.healthy++;
           break;
-        case "degraded":
+        case 'degraded':
           counts.degraded++;
           break;
-        case "unhealthy":
+        case 'unhealthy':
           counts.unhealthy++;
           break;
         default:
@@ -32,6 +32,6 @@ export function summarizeHealthStates(entities: HealthModelEntity[]): HealthStat
       degraded: 0,
       unhealthy: 0,
       unknown: 0,
-    },
+    }
   );
 }
