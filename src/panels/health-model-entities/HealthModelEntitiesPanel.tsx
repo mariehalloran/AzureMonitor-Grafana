@@ -126,6 +126,16 @@ export function HealthModelEntitiesPanel({
     void loadHistory(entity);
   };
 
+  // `entities` gets a new identity only when a fetch completes, including refresh-driven ones, so
+  // this reloads the open timeline in step with the table without collapsing the expanded row.
+  React.useEffect(() => {
+    const expandedEntity = entities.items.find((candidate) => candidate.id === expandedEntityId);
+    if (expandedEntity) {
+      void loadHistory(expandedEntity, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entities]);
+
   if (!isHealthModelPanelConfigured(configuration)) {
     return (
       <PanelMessage height={height}>

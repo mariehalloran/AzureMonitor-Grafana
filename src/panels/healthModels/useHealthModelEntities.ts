@@ -32,6 +32,12 @@ const EMPTY_RELATIONSHIPS: PagedResult<HealthModelRelationship> = {
   truncated: false,
 };
 
+// These panels call ARM directly instead of going through Grafana's query pipeline, so nothing
+// else rate-limits them. This floor keeps a short dashboard refresh interval (or a hand-edited
+// `?refresh=` URL) from throttling the Microsoft.CloudHealth API. It sits just under a minute so
+// that a 1m interval is not skipped by timer jitter.
+export const MIN_REFETCH_INTERVAL_MS = 55_000;
+
 export function useHealthModelEntities(
   configuration: HealthModelPanelConfiguration | undefined,
   refreshKey: number,
@@ -50,12 +56,18 @@ export function useHealthModelEntities(
     [configuration, refreshKey]
   );
   const { datasourceUid, subscriptionId, healthModelId } = resolved;
+  // Identifies which health model is being shown. Changing it must fetch immediately, while a
+  // repeat of the same target is a refresh and is subject to the interval floor.
+  const targetKey = `${datasourceUid ?? ''}|${subscriptionId ?? ''}|${healthModelId ?? ''}|${includeRelationships}`;
+  const lastTargetKey = React.useRef<string | undefined>(undefined);
+  const lastFetchAt = React.useRef(0);
 
   React.useEffect(() => {
     let cancelled = false;
     const activeConfiguration = { datasourceUid, subscriptionId, healthModelId };
 
     if (!isHealthModelPanelConfigured(activeConfiguration)) {
+      lastTargetKey.current = undefined;
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
@@ -70,6 +82,7 @@ export function useHealthModelEntities(
     try {
       resourceId = parseHealthModelResourceId(activeConfiguration.healthModelId);
     } catch (parseError) {
+      lastTargetKey.current = undefined;
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
@@ -80,6 +93,7 @@ export function useHealthModelEntities(
     }
 
     if (resourceId.subscriptionId.toLowerCase() !== activeConfiguration.subscriptionId.toLowerCase()) {
+      lastTargetKey.current = undefined;
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
@@ -89,11 +103,22 @@ export function useHealthModelEntities(
       return;
     }
 
-    setState({
+    const isSameTarget = lastTargetKey.current === targetKey;
+    if (isSameTarget && Date.now() - lastFetchAt.current < MIN_REFETCH_INTERVAL_MS) {
+      return;
+    }
+
+    lastTargetKey.current = targetKey;
+    lastFetchAt.current = Date.now();
+
+    setState((current) => ({
       loading: true,
-      entities: EMPTY_ENTITIES,
-      relationships: EMPTY_RELATIONSHIPS,
-    });
+      // Keep the previous results visible while refreshing the same model, otherwise every
+      // refresh would blank the panel and flash a spinner.
+      entities: isSameTarget ? current.entities : EMPTY_ENTITIES,
+      relationships: isSameTarget ? current.relationships : EMPTY_RELATIONSHIPS,
+      client: isSameTarget ? current.client : undefined,
+    }));
     void createHealthModelsApi(activeConfiguration.datasourceUid)
       .then(async (client) => {
         const [entities, relationships] = await Promise.all([
@@ -129,7 +154,11 @@ export function useHealthModelEntities(
     return () => {
       cancelled = true;
     };
-  }, [datasourceUid, healthModelId, includeRelationships, subscriptionId]);
+    // refreshKey is included so the dashboard refresh interval (and the manual Refresh button)
+    // re-fetches health state, which is the whole point of a live health view. targetKey is derived
+    // from the other dependencies, so it needs no entry of its own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasourceUid, healthModelId, includeRelationships, refreshKey, subscriptionId]);
 
   return { ...state, configuration: resolved };
 }
