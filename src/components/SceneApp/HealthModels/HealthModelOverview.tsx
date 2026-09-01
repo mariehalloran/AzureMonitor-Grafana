@@ -47,7 +47,6 @@ interface EntityHistoryViewState {
 
 interface HealthModelOverviewState extends SceneObjectState {
   loading: boolean;
-  mockMode: boolean;
   selectionMessage?: string;
   models: PagedResult<HealthModel>;
   selectedModelId?: string;
@@ -74,7 +73,6 @@ export interface HealthModelOverviewOptions {
     datasourceUid: string;
     subscriptionId: string;
   };
-  mockMode?: boolean;
 }
 
 export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewState> {
@@ -93,7 +91,6 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
   public constructor(options: HealthModelOverviewOptions = {}) {
     super({
       loading: false,
-      mockMode: options.mockMode ?? false,
       selectionMessage: 'Select a subscription to load its health models.',
       models: emptyPagedResult(),
       entities: emptyPagedResult(),
@@ -523,11 +520,6 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
 
   return (
     <div className={styles.container}>
-      {state.mockMode && (
-        <Alert title="Sandbox data" severity="info">
-          This page is using a local snapshot captured from Azure. The browser is not making Azure requests.
-        </Alert>
-      )}
       <div className={styles.modelSelector}>
         <label htmlFor="health-model-select">Health Model</label>
         <Select<string>

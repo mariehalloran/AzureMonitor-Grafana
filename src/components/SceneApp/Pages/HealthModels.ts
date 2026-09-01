@@ -10,11 +10,6 @@ import { Reporter } from 'reporter/reporter';
 import { ReportType } from 'reporter/types';
 import { AZMON_DS_VARIABLE, ROUTES } from '../../../constants';
 import { HealthModelOverview } from '../HealthModels/HealthModelOverview';
-import {
-  createHealthModelsMockApi,
-  isHealthModelsMockMode,
-  MOCK_HEALTH_MODELS_SUBSCRIPTION_ID,
-} from '../HealthModels/HealthModelsMockApi';
 import { selectFirstAvailableSubscription } from '../HealthModels/subscriptionSelection';
 import { getInstanceDatasourcesForType } from '../Queries/queryUtil';
 import { getDataSourcesVariableForType, getSubscriptionVariable } from '../Variables/variables';
@@ -25,9 +20,6 @@ export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
   const sceneTitle = 'Health Models';
   const sceneUrl = prefixRoute(ROUTES.HealthModels);
   const reporter = 'Scene.Main.HealthModelsScene';
-  if (isHealthModelsMockMode()) {
-    return getMockHealthModelsScene(sceneTitle, sceneUrl, reporter, pluginReporter);
-  }
 
   const azureMonitorDatasources = getInstanceDatasourcesForType('grafana-azure-monitor-datasource');
 
@@ -77,47 +69,6 @@ export function getHealthModelsScene(pluginReporter: Reporter): SceneAppPage {
     return () => {
       subscriptionVariableSubscription.unsubscribe();
     };
-  });
-
-  return new SceneAppPage({
-    title: sceneTitle,
-    url: sceneUrl,
-    getScene: () => scene,
-  });
-}
-
-function getMockHealthModelsScene(
-  sceneTitle: string,
-  sceneUrl: string,
-  reporter: string,
-  pluginReporter: Reporter
-): SceneAppPage {
-  const overview = new HealthModelOverview({
-    apiFactory: createHealthModelsMockApi,
-    fixedContext: {
-      datasourceUid: 'health-models-mock',
-      subscriptionId: MOCK_HEALTH_MODELS_SUBSCRIPTION_ID,
-    },
-    mockMode: true,
-  });
-  const scene = new EmbeddedScene({
-    body: new SceneFlexLayout({
-      direction: 'column',
-      children: [
-        new SceneFlexItem({
-          minHeight: 500,
-          body: overview,
-        }),
-      ],
-    }),
-  });
-
-  scene.addActivationHandler(() => {
-    pluginReporter.reportPageView('grafana_plugin_page_view', {
-      reporter,
-      type: ReportType.PageView,
-      dataSource: 'mock',
-    });
   });
 
   return new SceneAppPage({
