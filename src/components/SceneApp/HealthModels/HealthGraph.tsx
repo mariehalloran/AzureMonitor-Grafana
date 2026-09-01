@@ -8,7 +8,7 @@ import {
   HealthGraphEdge,
   HealthGraphLayoutOptions,
   HealthGraphNode,
-} from './healthGraph';
+} from './healthGraphLayout';
 import { HealthModelEntity, HealthModelRelationship } from './types';
 
 const CANVAS_PADDING = 16;

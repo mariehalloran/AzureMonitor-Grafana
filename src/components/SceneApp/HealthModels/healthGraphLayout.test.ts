@@ -1,5 +1,5 @@
 import { HealthModelEntity, HealthModelRelationship } from './types';
-import { buildHealthGraph, DEFAULT_HEALTH_GRAPH_LAYOUT } from './healthGraph';
+import { buildHealthGraph, DEFAULT_HEALTH_GRAPH_LAYOUT } from './healthGraphLayout';
 
 describe('buildHealthGraph', () => {
   test('nests children below their parent and centres the parent over them', () => {

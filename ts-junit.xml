@@ -1,83 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="33" failures="0" errors="0" time="0.984">
-  <testsuite name="useHealthModelEntities refresh behaviour" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:04" time="0.207" tests="4">
-    <testcase classname="useHealthModelEntities refresh behaviour re-fetches when the refresh key changes after the minimum interval" name="useHealthModelEntities refresh behaviour re-fetches when the refresh key changes after the minimum interval" time="0.009">
+<testsuites name="jest tests" tests="12" failures="0" errors="0" time="0.21">
+  <testsuite name="buildHealthGraph" errors="0" failures="0" skipped="0" timestamp="2026-09-01T17:38:56" time="0.088" tests="12">
+    <testcase classname="buildHealthGraph nests children below their parent and centres the parent over them" name="buildHealthGraph nests children below their parent and centres the parent over them" time="0.005">
     </testcase>
-    <testcase classname="useHealthModelEntities refresh behaviour ignores a refresh that arrives before the minimum interval" name="useHealthModelEntities refresh behaviour ignores a refresh that arrives before the minimum interval" time="0.002">
+    <testcase classname="buildHealthGraph uses the relationship display name as the edge label" name="buildHealthGraph uses the relationship display name as the edge label" time="0">
     </testcase>
-    <testcase classname="useHealthModelEntities refresh behaviour fetches immediately when the selected health model changes, ignoring the interval" name="useHealthModelEntities refresh behaviour fetches immediately when the selected health model changes, ignoring the interval" time="0.001">
+    <testcase classname="buildHealthGraph falls back to the relationship name when no display name is present" name="buildHealthGraph falls back to the relationship name when no display name is present" time="0">
     </testcase>
-    <testcase classname="useHealthModelEntities refresh behaviour keeps showing the previous entities while a refresh is in flight" name="useHealthModelEntities refresh behaviour keeps showing the previous entities while a refresh is in flight" time="0.005">
+    <testcase classname="buildHealthGraph treats entities without a parent as roots, including unrelated orphans" name="buildHealthGraph treats entities without a parent as roots, including unrelated orphans" time="0">
     </testcase>
-  </testsuite>
-  <testsuite name="Components/App" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:04" time="0.149" tests="1">
-    <testcase classname="Components/App renders without an error&quot;" name="Components/App renders without an error&quot;" time="0.002">
+    <testcase classname="buildHealthGraph counts relationships that reference unknown entities without placing them" name="buildHealthGraph counts relationships that reference unknown entities without placing them" time="0.001">
     </testcase>
-  </testsuite>
-  <testsuite name="buildTopology" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:04" time="0.03" tests="12">
-    <testcase classname="buildTopology nests children below their parent and centres the parent over them" name="buildTopology nests children below their parent and centres the parent over them" time="0.001">
+    <testcase classname="buildHealthGraph keeps a single parent when several relationships claim the same child" name="buildHealthGraph keeps a single parent when several relationships claim the same child" time="0">
     </testcase>
-    <testcase classname="buildTopology uses the relationship display name as the edge label" name="buildTopology uses the relationship display name as the edge label" time="0">
+    <testcase classname="buildHealthGraph terminates and places every entity when relationships form a cycle" name="buildHealthGraph terminates and places every entity when relationships form a cycle" time="0">
     </testcase>
-    <testcase classname="buildTopology falls back to the relationship name when no display name is present" name="buildTopology falls back to the relationship name when no display name is present" time="0">
+    <testcase classname="buildHealthGraph ignores a relationship that points an entity at itself" name="buildHealthGraph ignores a relationship that points an entity at itself" time="0">
     </testcase>
-    <testcase classname="buildTopology treats entities without a parent as roots, including unrelated orphans" name="buildTopology treats entities without a parent as roots, including unrelated orphans" time="0">
+    <testcase classname="buildHealthGraph staggers adjacent sibling labels so they do not overlap" name="buildHealthGraph staggers adjacent sibling labels so they do not overlap" time="0">
     </testcase>
-    <testcase classname="buildTopology counts relationships that reference unknown entities without placing them" name="buildTopology counts relationships that reference unknown entities without placing them" time="0">
+    <testcase classname="buildHealthGraph staggers labels by rendered position, not by relationship order" name="buildHealthGraph staggers labels by rendered position, not by relationship order" time="0">
     </testcase>
-    <testcase classname="buildTopology keeps a single parent when several relationships claim the same child" name="buildTopology keeps a single parent when several relationships claim the same child" time="0">
+    <testcase classname="buildHealthGraph carries entity health state and icon onto the node" name="buildHealthGraph carries entity health state and icon onto the node" time="0">
     </testcase>
-    <testcase classname="buildTopology terminates and places every entity when relationships form a cycle" name="buildTopology terminates and places every entity when relationships form a cycle" time="0.001">
-    </testcase>
-    <testcase classname="buildTopology ignores a relationship that points an entity at itself" name="buildTopology ignores a relationship that points an entity at itself" time="0">
-    </testcase>
-    <testcase classname="buildTopology staggers adjacent sibling labels so they do not overlap" name="buildTopology staggers adjacent sibling labels so they do not overlap" time="0">
-    </testcase>
-    <testcase classname="buildTopology staggers labels by rendered position, not by relationship order" name="buildTopology staggers labels by rendered position, not by relationship order" time="0">
-    </testcase>
-    <testcase classname="buildTopology carries entity health state and icon onto the node" name="buildTopology carries entity health state and icon onto the node" time="0">
-    </testcase>
-    <testcase classname="buildTopology returns an empty layout when there are no entities" name="buildTopology returns an empty layout when there are no entities" time="0">
-    </testcase>
-  </testsuite>
-  <testsuite name="buildHealthDistribution" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:04" time="0.031" tests="1">
-    <testcase classname="buildHealthDistribution builds ordered pie slices from entity health states" name="buildHealthDistribution builds ordered pie slices from entity health states" time="0.001">
-    </testcase>
-  </testsuite>
-  <testsuite name="selectFirstAvailableSubscription" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:05" time="0.027" tests="2">
-    <testcase classname="selectFirstAvailableSubscription does not clear the selection while options are temporarily empty" name="selectFirstAvailableSubscription does not clear the selection while options are temporarily empty" time="0">
-    </testcase>
-    <testcase classname="selectFirstAvailableSubscription selects the first available subscription when the current value is invalid" name="selectFirstAvailableSubscription selects the first available subscription when the current value is invalid" time="0.001">
-    </testcase>
-  </testsuite>
-  <testsuite name="summarizeHealthStates" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:05" time="0.027" tests="4">
-    <testcase classname="summarizeHealthStates counts documented states and groups missing or future values as unknown" name="summarizeHealthStates counts documented states and groups missing or future values as unknown" time="0.001">
-    </testcase>
-    <testcase classname="buildHealthTimeline fills the full range with the current state when there are no transitions" name="buildHealthTimeline fills the full range with the current state when there are no transitions" time="0">
-    </testcase>
-    <testcase classname="buildHealthTimeline creates chronological state intervals from newest-first transitions" name="buildHealthTimeline creates chronological state intervals from newest-first transitions" time="0">
-    </testcase>
-    <testcase classname="buildHealthTimeline uses a transition at the range boundary and merges unchanged states" name="buildHealthTimeline uses a transition at the range boundary and merges unchanged states" time="0">
-    </testcase>
-  </testsuite>
-  <testsuite name="HealthModelsApi" errors="0" failures="0" skipped="0" timestamp="2026-09-01T15:08:04" time="0.761" tests="9">
-    <testcase classname="HealthModelsApi lists health models through the Microsoft.CloudHealth API" name="HealthModelsApi lists health models through the Microsoft.CloudHealth API" time="0.003">
-    </testcase>
-    <testcase classname="HealthModelsApi follows an absolute ARM continuation link" name="HealthModelsApi follows an absolute ARM continuation link" time="0.001">
-    </testcase>
-    <testcase classname="HealthModelsApi rejects a continuation link for a different collection" name="HealthModelsApi rejects a continuation link for a different collection" time="0">
-    </testcase>
-    <testcase classname="HealthModelsApi marks results as truncated when the page limit is reached" name="HealthModelsApi marks results as truncated when the page limit is reached" time="0">
-    </testcase>
-    <testcase classname="HealthModelsApi loads entity history through the ARM action and follows continuation markers" name="HealthModelsApi loads entity history through the ARM action and follows continuation markers" time="0">
-    </testcase>
-    <testcase classname="Health Models ARM helpers parses a Health Model ARM resource ID" name="Health Models ARM helpers parses a Health Model ARM resource ID" time="0">
-    </testcase>
-    <testcase classname="Health Models ARM helpers rejects a non-Health-Model ARM resource ID" name="Health Models ARM helpers rejects a non-Health-Model ARM resource ID" time="0.001">
-    </testcase>
-    <testcase classname="Health Models ARM helpers normalizes a relative continuation link" name="Health Models ARM helpers normalizes a relative continuation link" time="0">
-    </testcase>
-    <testcase classname="Health Models ARM helpers returns status-specific authorization and throttling messages" name="Health Models ARM helpers returns status-specific authorization and throttling messages" time="0">
+    <testcase classname="buildHealthGraph returns an empty layout when there are no entities" name="buildHealthGraph returns an empty layout when there are no entities" time="0">
     </testcase>
   </testsuite>
 </testsuites>
