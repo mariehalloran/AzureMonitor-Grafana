@@ -2,6 +2,10 @@ import { DataSourceApi } from '@grafana/data';
 import { getDataSourceSrv } from '@grafana/runtime';
 import {
   ArmListResponse,
+  EntityHealthTransition,
+  EntityHistoryRequest,
+  EntityHistoryResponse,
+  EntityHistoryResult,
   HEALTH_MODELS_API_VERSION,
   HealthModel,
   HealthModelEntity,
@@ -16,12 +20,20 @@ export const DEFAULT_MAX_ARM_PAGES = 50;
 export interface AzureMonitorArmDataSource {
   type: string;
   getResource<T = unknown>(path: string, params?: Record<string, unknown>): Promise<T>;
+  postResource<T = unknown>(
+    path: string,
+    data?: unknown,
+    options?: {
+      params?: Record<string, unknown>;
+    }
+  ): Promise<T>;
 }
 
 export interface HealthModelsClient {
   listHealthModels(subscriptionId: string): Promise<PagedResult<HealthModel>>;
   listEntities(modelId: string): Promise<PagedResult<HealthModelEntity>>;
   listRelationships(modelId: string): Promise<PagedResult<HealthModelRelationship>>;
+  getEntityHistory(modelId: string, entityName: string, request?: EntityHistoryRequest): Promise<EntityHistoryResult>;
 }
 
 export type HealthModelsClientFactory = (datasourceUid: string) => Promise<HealthModelsClient>;
@@ -30,7 +42,11 @@ export function isAzureMonitorArmDataSource(
   datasource: DataSourceApi
 ): datasource is DataSourceApi & AzureMonitorArmDataSource {
   const resourceDatasource = datasource as Partial<AzureMonitorArmDataSource>;
-  return datasource.type === AZURE_MONITOR_DATASOURCE_TYPE && typeof resourceDatasource.getResource === 'function';
+  return (
+    datasource.type === AZURE_MONITOR_DATASOURCE_TYPE &&
+    typeof resourceDatasource.getResource === 'function' &&
+    typeof resourceDatasource.postResource === 'function'
+  );
 }
 
 export async function createHealthModelsApi(datasourceUid: string): Promise<HealthModelsApi> {
@@ -79,6 +95,56 @@ export class HealthModelsApi implements HealthModelsClient {
   public listRelationships(modelId: string): Promise<PagedResult<HealthModelRelationship>> {
     parseHealthModelResourceId(modelId);
     return this.listCollection<HealthModelRelationship>(`${modelId}/relationships`, 'relationships');
+  }
+
+  public async getEntityHistory(
+    modelId: string,
+    entityName: string,
+    request: EntityHistoryRequest = {}
+  ): Promise<EntityHistoryResult> {
+    parseHealthModelResourceId(modelId);
+    const normalizedEntityName = entityName.trim();
+    if (!normalizedEntityName) {
+      throw new Error('An entity name is required to load health history.');
+    }
+
+    const requestPath = `azuremonitor${modelId}/entities/${encodeURIComponent(normalizedEntityName)}/getHistory`;
+    const history: EntityHealthTransition[] = [];
+    let requestBody = request;
+    let nextMarker: string | undefined;
+    let pagesLoaded = 0;
+
+    do {
+      const page = await this.datasource.postResource<EntityHistoryResponse>(requestPath, requestBody, {
+        params: {
+          'api-version': HEALTH_MODELS_API_VERSION,
+        },
+      });
+      if (!page || typeof page.entityName !== 'string' || !Array.isArray(page.history)) {
+        throw new Error('Azure returned an invalid entity history response.');
+      }
+      if (page.entityName.toLowerCase() !== normalizedEntityName.toLowerCase()) {
+        throw new Error('Azure returned history for a different entity.');
+      }
+
+      history.push(...page.history);
+      pagesLoaded++;
+      nextMarker = typeof page.nextMarker === 'string' && page.nextMarker.trim() ? page.nextMarker : undefined;
+
+      if (nextMarker && pagesLoaded < this.maxPages) {
+        requestBody = {
+          ...(request.top === undefined ? {} : { top: request.top }),
+          nextMarker,
+        };
+      }
+    } while (nextMarker && pagesLoaded < this.maxPages);
+
+    return {
+      entityName: normalizedEntityName,
+      history,
+      pagesLoaded,
+      truncated: Boolean(nextMarker),
+    };
   }
 
   private async listCollection<T>(collectionPath: string, collectionName: string): Promise<PagedResult<T>> {

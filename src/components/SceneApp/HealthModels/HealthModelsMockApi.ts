@@ -1,5 +1,13 @@
 import { HealthModelsClient, HealthModelsClientFactory } from './HealthModelsApi';
-import { HealthModel, HealthModelEntity, HealthModelRelationship, PagedResult } from './types';
+import {
+  EntityHealthTransition,
+  EntityHistoryRequest,
+  EntityHistoryResult,
+  HealthModel,
+  HealthModelEntity,
+  HealthModelRelationship,
+  PagedResult,
+} from './types';
 
 export const MOCK_HEALTH_MODELS_SUBSCRIPTION_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -8,6 +16,7 @@ interface HealthModelsSandboxSnapshot {
   models: HealthModel[];
   entitiesByModel: Record<string, HealthModelEntity[]>;
   relationshipsByModel: Record<string, HealthModelRelationship[]>;
+  historyByEntity?: Record<string, EntityHealthTransition[]>;
 }
 
 class HealthModelsMockApi implements HealthModelsClient {
@@ -23,6 +32,20 @@ class HealthModelsMockApi implements HealthModelsClient {
 
   public listRelationships(modelId: string): Promise<PagedResult<HealthModelRelationship>> {
     return Promise.resolve(page(this.snapshot.relationshipsByModel[modelId] ?? []));
+  }
+
+  public getEntityHistory(
+    modelId: string,
+    entityName: string,
+    _request?: EntityHistoryRequest
+  ): Promise<EntityHistoryResult> {
+    const entityId = `${modelId}/entities/${entityName}`;
+    return Promise.resolve({
+      entityName,
+      history: this.snapshot.historyByEntity?.[entityId] ?? [],
+      pagesLoaded: 1,
+      truncated: false,
+    });
   }
 }
 
@@ -70,6 +93,8 @@ function isHealthModelsSandboxSnapshot(value: unknown): value is HealthModelsSan
     Boolean(snapshot.entitiesByModel) &&
     typeof snapshot.entitiesByModel === 'object' &&
     Boolean(snapshot.relationshipsByModel) &&
-    typeof snapshot.relationshipsByModel === 'object'
+    typeof snapshot.relationshipsByModel === 'object' &&
+    (snapshot.historyByEntity === undefined ||
+      (Boolean(snapshot.historyByEntity) && typeof snapshot.historyByEntity === 'object'))
   );
 }

@@ -9,7 +9,7 @@ import {
   sceneGraph,
   VariableValue,
 } from '@grafana/scenes';
-import { Alert, Badge, Button, Select, Spinner, useStyles2 } from '@grafana/ui';
+import { Alert, Badge, Button, Icon, Select, Spinner, useStyles2 } from '@grafana/ui';
 import React from 'react';
 import { AZMON_DS_VARIABLE, SUBSCRIPTION_VARIABLE } from '../../../constants';
 import {
@@ -20,9 +20,27 @@ import {
   parseHealthModelResourceId,
 } from './HealthModelsApi';
 import { summarizeHealthStates } from './healthModelUtils';
-import { HealthModel, HealthModelEntity, HealthModelRelationship, HealthModelResourceId, PagedResult } from './types';
+import {
+  EntityHistoryResult,
+  HealthModel,
+  HealthModelEntity,
+  HealthModelRelationship,
+  HealthModelResourceId,
+  PagedResult,
+} from './types';
 
 const MAX_VISIBLE_ENTITIES = 200;
+const MAX_VISIBLE_HISTORY_EVENTS = 200;
+const ENTITY_HISTORY_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+const ENTITY_HISTORY_PAGE_SIZE = 1000;
+
+interface EntityHistoryViewState {
+  loading: boolean;
+  startAt: string;
+  endAt: string;
+  result?: EntityHistoryResult;
+  error?: string;
+}
 
 interface HealthModelOverviewState extends SceneObjectState {
   loading: boolean;
@@ -37,6 +55,8 @@ interface HealthModelOverviewState extends SceneObjectState {
   modelsError?: string;
   entitiesError?: string;
   relationshipsError?: string;
+  expandedEntityId?: string;
+  entityHistoryById: Record<string, EntityHistoryViewState>;
   lastUpdated?: number;
 }
 
@@ -62,6 +82,8 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
   private requestGeneration = 0;
   private currentContextKey?: string;
   private activeDatasourceUid?: string;
+  private nextHistoryRequestId = 0;
+  private readonly historyRequestIds = new Map<string, number>();
   private readonly apiFactory: HealthModelsClientFactory;
   private readonly fixedContext?: HealthModelOverviewOptions['fixedContext'];
 
@@ -73,6 +95,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
       models: emptyPagedResult(),
       entities: emptyPagedResult(),
       relationships: emptyPagedResult(),
+      entityHistoryById: {},
     });
     this.apiFactory = options.apiFactory ?? createHealthModelsApi;
     this.fixedContext = options.fixedContext;
@@ -83,6 +106,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
         void this.loadFromVariables();
         return () => {
           this.requestGeneration++;
+          this.historyRequestIds.clear();
           this.currentContextKey = undefined;
           this.activeDatasourceUid = undefined;
         };
@@ -110,6 +134,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
 
       return () => {
         this.requestGeneration++;
+        this.historyRequestIds.clear();
         this.currentContextKey = undefined;
         this.activeDatasourceUid = undefined;
         this.datasourceVariable = undefined;
@@ -135,6 +160,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     }
 
     const requestGeneration = ++this.requestGeneration;
+    this.historyRequestIds.clear();
     this.setState({
       loading: true,
       selectionMessage: undefined,
@@ -145,10 +171,30 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
       relationships: emptyPagedResult(),
       entitiesError: undefined,
       relationshipsError: undefined,
+      expandedEntityId: undefined,
+      entityHistoryById: {},
       lastUpdated: undefined,
     });
 
     void this.loadSelectedModel(this.activeDatasourceUid, selectedModel, requestGeneration);
+  };
+
+  public toggleEntityHistory = (entity: HealthModelEntity) => {
+    if (this.state.expandedEntityId === entity.id) {
+      this.setState({
+        expandedEntityId: undefined,
+      });
+      return;
+    }
+
+    this.setState({
+      expandedEntityId: entity.id,
+    });
+    void this.loadEntityHistory(entity);
+  };
+
+  public reloadEntityHistory = (entity: HealthModelEntity) => {
+    void this.loadEntityHistory(entity, true);
   };
 
   private async loadFromVariables(force = false) {
@@ -199,6 +245,7 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
 
     const contextChanged = this.currentContextKey !== contextKey;
     const requestGeneration = ++this.requestGeneration;
+    this.historyRequestIds.clear();
     this.currentContextKey = contextKey;
     this.activeDatasourceUid = datasourceUid;
     this.setState({
@@ -213,6 +260,8 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
       modelsError: undefined,
       entitiesError: undefined,
       relationshipsError: undefined,
+      expandedEntityId: undefined,
+      entityHistoryById: {},
       lastUpdated: contextChanged ? undefined : this.state.lastUpdated,
     });
 
@@ -299,8 +348,81 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
     }
   }
 
+  private async loadEntityHistory(entity: HealthModelEntity, force = false) {
+    const datasourceUid = this.activeDatasourceUid;
+    const modelId = this.state.selectedModelId;
+    const existingHistory = this.state.entityHistoryById[entity.id];
+    if (!datasourceUid || !modelId || (!force && (existingHistory?.loading || existingHistory?.result))) {
+      return;
+    }
+
+    const endAt = new Date();
+    const startAt = new Date(endAt.getTime() - ENTITY_HISTORY_LOOKBACK_MS);
+    const requestId = ++this.nextHistoryRequestId;
+    this.historyRequestIds.set(entity.id, requestId);
+    this.setEntityHistoryState(entity.id, {
+      loading: true,
+      startAt: startAt.toISOString(),
+      endAt: endAt.toISOString(),
+    });
+
+    try {
+      const api = await this.apiFactory(datasourceUid);
+      const result = await api.getEntityHistory(modelId, entity.name, {
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        top: ENTITY_HISTORY_PAGE_SIZE,
+      });
+      if (!this.isCurrentHistoryRequest(entity.id, requestId, datasourceUid, modelId)) {
+        return;
+      }
+
+      this.setEntityHistoryState(entity.id, {
+        loading: false,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        result,
+      });
+    } catch (error) {
+      if (!this.isCurrentHistoryRequest(entity.id, requestId, datasourceUid, modelId)) {
+        return;
+      }
+
+      this.setEntityHistoryState(entity.id, {
+        loading: false,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        error: getHealthModelsErrorMessage(error),
+      });
+    }
+  }
+
+  private isCurrentHistoryRequest(
+    entityId: string,
+    requestId: number,
+    datasourceUid: string,
+    modelId: string
+  ): boolean {
+    return (
+      this.isActive &&
+      this.historyRequestIds.get(entityId) === requestId &&
+      this.activeDatasourceUid === datasourceUid &&
+      this.state.selectedModelId === modelId
+    );
+  }
+
+  private setEntityHistoryState(entityId: string, historyState: EntityHistoryViewState) {
+    this.setState({
+      entityHistoryById: {
+        ...this.state.entityHistoryById,
+        [entityId]: historyState,
+      },
+    });
+  }
+
   private invalidateContext(message: string) {
     this.requestGeneration++;
+    this.historyRequestIds.clear();
     this.currentContextKey = undefined;
     this.activeDatasourceUid = undefined;
     this.setState({
@@ -315,6 +437,8 @@ export class HealthModelOverview extends SceneObjectBase<HealthModelOverviewStat
       modelsError: undefined,
       entitiesError: undefined,
       relationshipsError: undefined,
+      expandedEntityId: undefined,
+      entityHistoryById: {},
       lastUpdated: undefined,
     });
   }
@@ -501,17 +625,47 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
               </tr>
             </thead>
             <tbody>
-              {displayedEntities.map((entity) => (
-                <tr key={entity.id}>
-                  <td>{entity.properties?.displayName ?? entity.name}</td>
-                  <td>
-                    <HealthStateBadge healthState={entity.properties?.healthState} />
-                  </td>
-                  <td>{entity.properties?.impact ?? '--'}</td>
-                  <td>{entity.properties?.healthObjective == null ? '--' : `${entity.properties.healthObjective}%`}</td>
-                  <td>{entity.properties?.provisioningState ?? '--'}</td>
-                </tr>
-              ))}
+              {displayedEntities.map((entity) => {
+                const isExpanded = state.expandedEntityId === entity.id;
+                const entityDisplayName = entity.properties?.displayName ?? entity.name;
+                return (
+                  <React.Fragment key={entity.id}>
+                    <tr>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.entityToggle}
+                          aria-expanded={isExpanded}
+                          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} health history for ${entityDisplayName}`}
+                          onClick={() => model.toggleEntityHistory(entity)}
+                        >
+                          <Icon name={isExpanded ? 'angle-down' : 'angle-right'} />
+                          <span>{entityDisplayName}</span>
+                        </button>
+                      </td>
+                      <td>
+                        <HealthStateBadge healthState={entity.properties?.healthState} />
+                      </td>
+                      <td>{entity.properties?.impact ?? '--'}</td>
+                      <td>
+                        {entity.properties?.healthObjective == null ? '--' : `${entity.properties.healthObjective}%`}
+                      </td>
+                      <td>{entity.properties?.provisioningState ?? '--'}</td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className={styles.historyRow}>
+                        <td colSpan={5}>
+                          <EntityHistoryPanel
+                            entity={entity}
+                            historyState={state.entityHistoryById[entity.id]}
+                            onRetry={() => model.reloadEntityHistory(entity)}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -533,6 +687,106 @@ function SummaryCard({ label, value }: { label: string; value?: number }) {
       <div className={styles.summaryLabel}>{label}</div>
     </div>
   );
+}
+
+function EntityHistoryPanel({
+  entity,
+  historyState,
+  onRetry,
+}: {
+  entity: HealthModelEntity;
+  historyState?: EntityHistoryViewState;
+  onRetry: () => void;
+}) {
+  const styles = useStyles2(getStyles);
+
+  if (!historyState || historyState.loading) {
+    return (
+      <div className={styles.historyLoading}>
+        <Spinner />
+        <span>Loading health history for the previous 24 hours...</span>
+      </div>
+    );
+  }
+
+  if (historyState.error) {
+    return (
+      <div className={styles.historyPanel}>
+        <Alert title="Health history could not be loaded" severity="error">
+          {historyState.error}
+        </Alert>
+        <Button variant="secondary" onClick={onRetry}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const history = [...(historyState.result?.history ?? [])].sort((left, right) =>
+    right.occurredAt.localeCompare(left.occurredAt)
+  );
+  const displayedHistory = history.slice(0, MAX_VISIBLE_HISTORY_EVENTS);
+
+  return (
+    <div className={styles.historyPanel}>
+      <div className={styles.historyHeader}>
+        <div>
+          <strong>Health history</strong>
+          <div className={styles.metadata}>
+            {formatHistoryTimestamp(historyState.startAt)} to {formatHistoryTimestamp(historyState.endAt)}
+          </div>
+        </div>
+        <HealthStateBadge healthState={entity.properties?.healthState} />
+      </div>
+
+      {historyState.result?.truncated && (
+        <Alert title="Only part of this entity's history was loaded" severity="warning">
+          Azure returned more history pages than the configured request limit.
+        </Alert>
+      )}
+
+      {history.length === 0 ? (
+        <div className={styles.historyEmpty}>No health transitions occurred during this period.</div>
+      ) : (
+        <>
+          <table className={styles.historyTable}>
+            <thead>
+              <tr>
+                <th>Occurred at</th>
+                <th>Previous state</th>
+                <th>New state</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedHistory.map((transition, index) => (
+                <tr key={`${transition.occurredAt}-${index}`}>
+                  <td>{formatHistoryTimestamp(transition.occurredAt)}</td>
+                  <td>
+                    <HealthStateBadge healthState={transition.previousState} />
+                  </td>
+                  <td>
+                    <HealthStateBadge healthState={transition.newState} />
+                  </td>
+                  <td>{transition.reason ?? '--'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {history.length > MAX_VISIBLE_HISTORY_EVENTS && (
+            <div className={styles.metadata}>
+              Showing the first {MAX_VISIBLE_HISTORY_EVENTS} of {history.length} transitions.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function formatHistoryTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? timestamp : date.toLocaleString();
 }
 
 function HealthStateBadge({ healthState }: { healthState?: string }) {
@@ -632,19 +886,85 @@ function getStyles(theme: GrafanaTheme2) {
     table: css({
       width: '100%',
       borderCollapse: 'collapse',
-      '& th, & td': {
+      '& > thead > tr > th, & > tbody > tr > td': {
         padding: theme.spacing(1),
         textAlign: 'left',
         borderBottom: `1px solid ${theme.colors.border.weak}`,
       },
-      '& th': {
+      '& > thead > tr > th': {
         color: theme.colors.text.secondary,
         background: theme.colors.background.secondary,
         fontWeight: theme.typography.fontWeightMedium,
       },
-      '& tbody tr:last-child td': {
+      '& > tbody > tr:last-child > td': {
         borderBottom: 0,
       },
+    }),
+    entityToggle: css({
+      appearance: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
+      padding: 0,
+      border: 0,
+      background: 'transparent',
+      color: theme.colors.text.primary,
+      cursor: 'pointer',
+      font: 'inherit',
+      textAlign: 'left',
+      '&:hover span': {
+        textDecoration: 'underline',
+      },
+      '&:focus-visible': {
+        outline: '2px solid currentColor',
+        outlineOffset: 2,
+      },
+    }),
+    historyRow: css({
+      '& > td': {
+        padding: '0 !important',
+        background: theme.colors.background.secondary,
+      },
+    }),
+    historyPanel: css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(1),
+      padding: theme.spacing(2),
+    }),
+    historyLoading: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      padding: theme.spacing(2),
+      color: theme.colors.text.secondary,
+    }),
+    historyHeader: css({
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: theme.spacing(2),
+    }),
+    historyTable: css({
+      width: '100%',
+      borderCollapse: 'collapse',
+      background: theme.colors.background.primary,
+      '& th, & td': {
+        padding: theme.spacing(1),
+        textAlign: 'left',
+        border: `1px solid ${theme.colors.border.weak}`,
+      },
+      '& th': {
+        color: theme.colors.text.secondary,
+        fontWeight: theme.typography.fontWeightMedium,
+      },
+    }),
+    historyEmpty: css({
+      padding: theme.spacing(2),
+      color: theme.colors.text.secondary,
+      background: theme.colors.background.primary,
+      border: `1px solid ${theme.colors.border.weak}`,
+      borderRadius: theme.shape.radius.default,
     }),
     empty: css({
       padding: theme.spacing(3),

@@ -13,14 +13,18 @@ const MODEL_ID =
 
 function createDatasourceMock() {
   const getResource = jest.fn();
+  const postResource = jest.fn();
   const datasource: AzureMonitorArmDataSource = {
     type: AZURE_MONITOR_DATASOURCE_TYPE,
     getResource: <T>(path: string, params?: Record<string, unknown>) => getResource(path, params) as Promise<T>,
+    postResource: <T>(path: string, data?: unknown, options?: { params?: Record<string, unknown> }) =>
+      postResource(path, data, options) as Promise<T>,
   };
 
   return {
     datasource,
     getResource,
+    postResource,
   };
 }
 
@@ -96,6 +100,79 @@ describe('HealthModelsApi', () => {
       truncated: true,
     });
     expect(getResource).toHaveBeenCalledTimes(1);
+  });
+
+  test('loads entity history through the ARM action and follows continuation markers', async () => {
+    const { datasource, postResource } = createDatasourceMock();
+    postResource
+      .mockResolvedValueOnce({
+        entityName: 'one',
+        history: [
+          {
+            previousState: 'Healthy',
+            newState: 'Degraded',
+            occurredAt: '2026-08-31T12:00:00Z',
+            reason: 'SignalTransition',
+          },
+        ],
+        nextMarker: 'next-page',
+      })
+      .mockResolvedValueOnce({
+        entityName: 'one',
+        history: [
+          {
+            previousState: 'Degraded',
+            newState: 'Healthy',
+            occurredAt: '2026-08-31T11:00:00Z',
+            reason: 'SignalTransition',
+          },
+        ],
+      });
+
+    const request = {
+      startAt: '2026-08-30T12:00:00Z',
+      endAt: '2026-08-31T12:00:00Z',
+      top: 1000,
+    };
+    const result = await new HealthModelsApi(datasource).getEntityHistory(MODEL_ID, 'one', request);
+
+    expect(postResource).toHaveBeenNthCalledWith(1, `azuremonitor${MODEL_ID}/entities/one/getHistory`, request, {
+      params: {
+        'api-version': '2026-09-01-preview',
+      },
+    });
+    expect(postResource).toHaveBeenNthCalledWith(
+      2,
+      `azuremonitor${MODEL_ID}/entities/one/getHistory`,
+      {
+        top: 1000,
+        nextMarker: 'next-page',
+      },
+      {
+        params: {
+          'api-version': '2026-09-01-preview',
+        },
+      }
+    );
+    expect(result).toEqual({
+      entityName: 'one',
+      history: [
+        {
+          previousState: 'Healthy',
+          newState: 'Degraded',
+          occurredAt: '2026-08-31T12:00:00Z',
+          reason: 'SignalTransition',
+        },
+        {
+          previousState: 'Degraded',
+          newState: 'Healthy',
+          occurredAt: '2026-08-31T11:00:00Z',
+          reason: 'SignalTransition',
+        },
+      ],
+      pagesLoaded: 2,
+      truncated: false,
+    });
   });
 });
 

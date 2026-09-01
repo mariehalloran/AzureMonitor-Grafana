@@ -10,6 +10,7 @@ The app now has a **Health Models** tab that:
 - Lists Health Model resources in the selected subscription.
 - Loads the selected model's current entities and relationships.
 - Summarizes entity health states and displays basic entity details.
+- Lazily loads the previous 24 hours of health transitions when an entity row is expanded.
 - Follows ARM continuation links with a bounded page limit and identifies partial results.
 - Handles model, entity, and relationship failures independently so available data remains visible.
 
@@ -31,6 +32,7 @@ All feature data comes from the `Microsoft.CloudHealth` Health Models API using 
 GET /subscriptions/{subscriptionId}/providers/Microsoft.CloudHealth/healthmodels
 GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CloudHealth/healthmodels/{healthModelName}/entities
 GET /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CloudHealth/healthmodels/{healthModelName}/relationships
+POST /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.CloudHealth/healthmodels/{healthModelName}/entities/{entityName}/getHistory
 ```
 
 The configured Azure Monitor datasource is used only as an authenticated ARM transport. Its `azuremonitor/` backend resource route attaches the datasource's Azure credentials and forwards the relative request to the configured Resource Manager endpoint. The feature does not obtain Health Models data from Azure Monitor metrics, logs, or Resource Graph.
@@ -49,7 +51,7 @@ Health Model entities and relationships are proxy resources that are not discove
 
 ### Remain read-only
 
-The first contribution is an operational monitoring experience, not a model designer. It issues only GET requests and leaves creation, editing, and deletion in Azure. The selected datasource identity should have only the Azure permissions needed to read the target Health Models.
+The first contribution is an operational monitoring experience, not a model designer. It issues GET requests and the read-only `getHistory` POST action, leaving creation, editing, and deletion in Azure. The selected datasource identity should have only the Azure permissions needed to read the target Health Models.
 
 ### Load only while the Scene is active
 
@@ -62,7 +64,8 @@ Model, entity, and relationship lists can be paged and large. The API adapter fo
 ## Current MVP limits
 
 - One subscription is selected at a time.
-- The page displays current state only; it does not request entity or signal history.
+- Entity history is loaded on demand for the previous 24 hours; the page does not yet expose a configurable history range.
+- Signal history and data annotations are not displayed.
 - Relationships are counted but not yet rendered as a dependency graph.
 - Model configuration and write operations are intentionally excluded.
 - The custom Health Models data-plane audience is not used; this experience calls the ARM control-plane API.
@@ -75,4 +78,4 @@ A development build can render the page from a local snapshot without configurin
 http://localhost:3000/a/azure-monitor-app/clusternavigation/healthmodels?healthModelsMock=1
 ```
 
-Mock mode is accepted only when Webpack builds the plugin in development mode. `HealthModelsMockApi.ts` loads the ignored snapshot and implements the same `HealthModelsClient` contract as the production ARM adapter. The page therefore exercises the normal Scene lifecycle, model selection, health summaries, and entity rendering without making Azure requests from the browser. The snapshot can contain subscription resource data and must never be committed.
+Mock mode is accepted only when Webpack builds the plugin in development mode. `HealthModelsMockApi.ts` loads the ignored snapshot and implements the same `HealthModelsClient` contract as the production ARM adapter. The page therefore exercises the normal Scene lifecycle, model selection, health summaries, and entity rendering without making Azure requests from the browser. Optional history can be supplied in a `historyByEntity` object keyed by full entity resource ID. The snapshot can contain subscription resource data and must never be committed.

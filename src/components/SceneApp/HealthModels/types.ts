@@ -44,6 +44,33 @@ export interface HealthModelRelationship {
   };
 }
 
+export interface EntityHistoryRequest {
+  startAt?: string;
+  endAt?: string;
+  top?: number;
+  nextMarker?: string;
+}
+
+export interface EntityHealthTransition {
+  previousState?: string;
+  newState: string;
+  occurredAt: string;
+  reason?: string;
+}
+
+export interface EntityHistoryResponse {
+  entityName: string;
+  history: EntityHealthTransition[];
+  nextMarker?: string | null;
+}
+
+export interface EntityHistoryResult {
+  entityName: string;
+  history: EntityHealthTransition[];
+  pagesLoaded: number;
+  truncated: boolean;
+}
+
 export interface ArmListResponse<T> {
   value: T[];
   nextLink?: string;
