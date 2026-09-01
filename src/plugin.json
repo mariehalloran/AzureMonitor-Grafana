@@ -7,7 +7,7 @@
   "backend": true,
   "executable": "gpx_azure_cloudnative_monitoring",
   "info": {
-    "keywords": ["app", "azure", "cloud", "native", "aks", "kubernetes", "monitoring"],
+    "keywords": ["app", "azure", "cloud", "native", "aks", "kubernetes", "monitoring", "health models", "cloudhealth"],
     "description": "Monitor your Azure Cloud Native services",
     "author": {
       "name": "Microsoft"
@@ -31,8 +31,29 @@
   },
   "includes": [
     {
+      "type": "dashboard",
+      "name": "Health Models",
+      "path": "dashboards/health-models.json",
+      "addToNav": false
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Entities",
+      "path": "panels/health-model-entities/plugin.json"
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Health Distribution",
+      "path": "panels/health-model-health-distribution/plugin.json"
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Topology",
+      "path": "panels/health-model-topology/plugin.json"
+    },
+    {
       "type": "page",
-      "name": "Page One",
+      "name": "Azure Cloud Native Monitoring",
       "path": "/a/%PLUGIN_ID%/clusternavigation",
       "role": "Admin",
       "addToNav": true,

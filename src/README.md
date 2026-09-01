@@ -4,7 +4,7 @@
 
 ![Homepage](https://github.com/user-attachments/assets/90148f4c-c3ad-4cb5-9fe3-076de7827ffd)
 
-This Grafana App Plugin provides a seamless and enhanced monitoring experience for Azure Kubernetes Service (AKS) users. It integrates Azure, AKS, and Prometheus to offer a comprehensive view of your AKS environment.
+This Grafana App Plugin provides curated monitoring experiences for Azure Kubernetes Service (AKS) and Azure Health Models. The Health Models preview page calls the `Microsoft.CloudHealth` Health Models API to load models, entities, relationships, and current health states.
 
 **Simplified User Experience**: Users can access fully populated charts and experiences by selecting the cluster of interest. The plugin reduces the number of user inputs required, automatically discovering and populating variables such as Prometheus datasource and Log Analytics workspace.
 
@@ -14,20 +14,27 @@ This Grafana App Plugin provides a seamless and enhanced monitoring experience f
 
 **Enhanced Troubleshooting**: It improves the AKS troubleshooting experience by providing better navigation, a range of supported visualizations, and keeping users in the same context.
 
+**Health Models Preview**: Users can select a Health Model and view its current entity health summary and relationship count in Grafana. The configured Azure Monitor datasource supplies authenticated ARM transport only; model data comes from the Health Models API. The experience is read-only, and model configuration remains in Azure.
+
+**Health Model Dashboard Panels**: Users can add Azure Health Model Entities and Azure Health Model Health Distribution directly from the dashboard visualization picker. Each panel provides options for selecting the Azure Monitor datasource, subscription, and Health Model.
+
 ## Requirements
 
-This plugin works with Azure Monitor Datasource and Prometheus datasource configured with the Azure Monitor managed service for Prometheus. Please make sure you have configured in your instance:
+AKS monitoring works with Azure Monitor and Prometheus datasources configured with Azure Monitor managed service for Prometheus. Health Models requires only an Azure Monitor datasource with read access to the selected models. Please make sure you have configured in your instance:
 
 - [Azure Monitor Datasource](https://grafana.com/docs/grafana/latest/datasources/azure-monitor/#azure-monitor-data-source)
 - [Prometheus Datasource](https://grafana.com/docs/grafana/latest/getting-started/get-started-grafana-prometheus/) with [Azure Monitor managed service](https://learn.microsoft.com/en-us/azure/azure-monitor/essentials/prometheus-metrics-overview)
 
 ### Permissions requirements
+
 Regardless of the Azure Authentication method you are using, the following are the minimum required permissions that you Grafana instance needs for the resource you are trying to query data from:
 
 - **Azure Monitor**: Monitoring Reader
 - **Azure Managed Prometheus**: Monitoring Data Reader
+- **Azure Health Models**: Reader access to the target `Microsoft.CloudHealth/healthmodels` resources
 
 ## Getting started
+
 If this plugin has not yet been enabled on your Grafana instance, Click on Install then Enable. This will automatically add an entry point on your Grafana navigation bar under Apps
 
 ![Grafana Navigation Bar](https://github.com/user-attachments/assets/eb52dc9a-5323-412f-a388-5909a4c06240)

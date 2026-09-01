@@ -1,0 +1,16 @@
+{
+  "type": "panel",
+  "name": "Azure Health Model Entities",
+  "id": "azure-health-model-entities-panel",
+  "skipDataQuery": true,
+  "info": {
+    "description": "Displays Azure Health Model entities with expandable health history timelines.",
+    "author": {
+      "name": "Microsoft"
+    },
+    "logos": {
+      "small": "../../img/azure logo.svg",
+      "large": "../../img/azure logo.svg"
+    }
+  }
+}

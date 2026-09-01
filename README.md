@@ -5,13 +5,13 @@
 
 A Grafana cloud-native app plugin designed to enhance monitoring capabilities.
 
------------------------------------------------------------------
+---
 
 ## Overview
 
-This Grafana App Plugin provides a seamless and enhanced monitoring experience for Azure Kubernetes Service (AKS) users. It integrates Azure, AKS, and Prometheus to offer a comprehensive view of your AKS environment.
+This Grafana App Plugin provides curated monitoring experiences for Azure Kubernetes Service (AKS) and Azure Health Models. The Health Models preview page calls the `Microsoft.CloudHealth` Health Models API to load models, entities, relationships, and current health states.
 
-This plugin has a dependence on users having configured Azure Monitor and Prometheus plugin with the Azure Monitor managed service for Prom.
+AKS monitoring requires Azure Monitor and Prometheus datasources configured with Azure Monitor managed service for Prometheus. Health Models requires an Azure Monitor datasource whose identity can read `Microsoft.CloudHealth/healthmodels` resources.
 
 ### Key Features
 
@@ -23,6 +23,10 @@ This plugin has a dependence on users having configured Azure Monitor and Promet
 
 **Enhanced Troubleshooting**: It improves the AKS troubleshooting experience by providing better navigation, a range of supported visualizations, and keeping users in the same context.
 
+**Health Models Preview**: It lists Azure Health Models and summarizes the current health of their entities and relationships. The configured Azure Monitor datasource supplies the authenticated ARM transport, while all feature requests target the `Microsoft.CloudHealth` Health Models API.
+
+**Health Model Dashboard Panels**: The app bundles selectable dashboard panels for an entity table with expandable health timelines and a pie or donut chart of entity health-state distribution. Configure the Azure Monitor datasource, subscription, and Health Model from each panel's options.
+
 ### Benefits
 
 - Reduces the cognitive load for users by minimizing the information they need to know to start their troubleshooting journey.
@@ -30,56 +34,61 @@ This plugin has a dependence on users having configured Azure Monitor and Promet
 
 The Grafana App Plugin for AKS Monitoring is a powerful tool that simplifies and enhances the monitoring experience for AKS users. It leverages the strengths of Azure, AKS, and Prometheus to provide a unified and detailed view of the clusters, facilitating better decision-making and troubleshooting.
 
-
-
 <!-----------------------[  Getting Started  ]--------------<recommended> section below------------------>
+
 ## Getting Started
 
 This plugin will be shipped as part of Grafana's [plugin catalog](https://grafana.com/grafana/plugins/). You may find our plugin here [placeholder for plugin link once shipped]()
 
-
 <!-----------------------[ Prerequisites  ]-----------------<optional> section below--------------------->
+
 ### Prerequisites
 
 - A Grafana instance running on 10.4+
 - An Azure Monitor datasource configured with the right access to your AKS clusters
 - A Prometheus datasource configured with the Azure Monitor Workspace that has been onboarded to monitor your clusters.
+- For Health Models, Azure Reader access to the target `Microsoft.CloudHealth/healthmodels` resources.
 
 <!-----------------------[  Installing  ]-------------------<optional> section below------------------>
+
 ### Installing
 
 You may use our plugin locally through cloning this repo onto your machine, or by installing it directly in your Grafana instance. Please follow the instructions below based on the scenario that best fits your needs.
 
 #### Grafana Instance
+
 Note that you will need the right permissions on your Grafana instance in order to install plugins. To learn more about these, please take a look at [Grafana Roles](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#:~:text=Grafana%20uses%20the%20following%20roles%20to%20control%20user,Permissions%20will%20be%20added%20with%20RBAC%20as%20needed.). Role permissions may vary by org, please check with your instance Admin to figure out what you need to install this plugin.
 
 In your Grafana instance:
-1. Navigate to *Administration* > *Plugins and Data* > *Plugins*
-1. Toggle *State* to *All*
+
+1. Navigate to _Administration_ > _Plugins and Data_ > _Plugins_
+1. Toggle _State_ to _All_
 1. Search for Azure Cloud Native Monitoring and click install
 
 #### Locally
+
 Please see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 <!-----------------------[  Deployment (CI/CD)  ]-----------<optional> section below--------------------->
+
 ### Deployment (CI/CD)
 
 This Repo will be leveraing Azure Devops Pipelines for deployment
 
------------------------------------------------
-
+---
 
 <!-----------------------[  Contributing  ]-----------------<recommended> section below------------------>
+
 ## Contributing
 
 _This repository prefers outside contributors start forks rather than branches. Pull requests that do not come from a forked repo, will not be reviewed_
 
 Before creating a Pull Request, please make sure you have opened a github issue that goes over what you are trying to do and whether it is a bug fix or a new feature. The github issue should be linked on the PR
- 
+
 ### Support & Reuse Expectations
 
 _The creators of this repository **DO NOT EXPECT REUSE**._
 
 If you do use it, please leave a note in an issue, so we can best understand the value of this repository.
 
---------------------------------------------
+---
