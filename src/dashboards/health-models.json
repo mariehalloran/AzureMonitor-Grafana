@@ -1,0 +1,122 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "azure-health-model-graph-panel",
+      "title": "Health graph",
+      "description": "Entities coloured by health state, connected by their parent and child relationships.",
+      "id": 1,
+      "gridPos": { "h": 15, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}",
+          "resultFormat": "nodeGraph"
+        }
+      ],
+      "options": {}
+    },
+    {
+      "type": "azure-health-model-timeline-panel",
+      "title": "Health history",
+      "description": "Expand an entity to load its health state timeline.",
+      "id": 2,
+      "gridPos": { "h": 13, "w": 10, "x": 0, "y": 15 },
+      "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}",
+          "resultFormat": "nodeGraph"
+        }
+      ],
+      "options": { "historyHours": 24 }
+    },
+    {
+      "type": "table",
+      "title": "Entities",
+      "description": "Health state, last checked, signal counts, and configured alerts for each entity.",
+      "id": 3,
+      "gridPos": { "h": 13, "w": 14, "x": 10, "y": 15 },
+      "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}",
+          "resultFormat": "entities"
+        }
+      ],
+      "options": { "showHeader": true },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    }
+  ],
+  "preload": false,
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["azure", "health models"],
+  "templating": {
+    "list": [
+      {
+        "name": "healthmodels_ds",
+        "label": "Health Models data source",
+        "type": "datasource",
+        "query": "azure-health-models-datasource",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "subscription",
+        "label": "Subscription",
+        "type": "query",
+        "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+        "query": "subscriptions()",
+        "current": {},
+        "options": [],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      },
+      {
+        "name": "healthmodel",
+        "label": "Health Model",
+        "type": "query",
+        "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
+        "query": "healthModels(${subscription})",
+        "current": {},
+        "options": [],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": { "refresh_intervals": ["1m", "5m", "15m", "30m", "1h", "2h", "1d"] },
+  "timezone": "browser",
+  "title": "Azure Health Models",
+  "uid": "azure-health-models",
+  "version": 1,
+  "weekStart": ""
+}

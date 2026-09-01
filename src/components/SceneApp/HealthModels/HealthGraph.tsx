@@ -1,7 +1,19 @@
 import { css } from '@emotion/css';
 import { GrafanaTheme2, IconName } from '@grafana/data';
-import { Alert, Icon, useStyles2, useTheme2 } from '@grafana/ui';
+import { Alert, Icon, IconButton, useStyles2, useTheme2 } from '@grafana/ui';
 import React from 'react';
+import {
+  canPan,
+  clampTransform,
+  fitTransform,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  panBy,
+  Size,
+  ViewportTransform,
+  zoomAt,
+  ZOOM_STEP,
+} from './graphViewport';
 import { getHealthStateColor } from './HealthTimelineBar';
 import {
   buildHealthGraph,
@@ -12,31 +24,170 @@ import {
 import { HealthModelEntity, HealthModelRelationship } from './types';
 
 const CANVAS_PADDING = 16;
-const MAX_CANVAS_HEIGHT = 620;
+const DEFAULT_VIEWPORT_HEIGHT = 620;
+const KEYBOARD_PAN_STEP = 40;
 
 interface HealthGraphProps {
   entities: HealthModelEntity[];
   relationships: HealthModelRelationship[];
+  /** Viewport height in pixels. Panels pass their own height so the graph fills the panel. */
+  height?: number;
 }
 
 /**
  * Draws Health Model entities as a top-down graph, with each entity coloured by its health state
- * and connected to its children through elbow connectors.
+ * and connected to its children through elbow connectors. The graph can be panned and zoomed so
+ * large models stay readable.
  */
-export function HealthGraph({ entities, relationships }: HealthGraphProps) {
+export function HealthGraph({ entities, relationships, height = DEFAULT_VIEWPORT_HEIGHT }: HealthGraphProps) {
   const styles = useStyles2(getStyles);
   const theme = useTheme2();
   const layout = React.useMemo(() => buildHealthGraph(entities, relationships), [entities, relationships]);
 
+  const canvas: Size = {
+    width: layout.width + CANVAS_PADDING * 2,
+    height: layout.height + CANVAS_PADDING * 2,
+  };
+
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = React.useState<Size>({ width: 0, height: 0 });
+  const [transform, setTransform] = React.useState<ViewportTransform>({ x: 0, y: 0, scale: 1 });
+  const [isPanning, setIsPanning] = React.useState(false);
+
+  // Latest values for the native wheel listener, which is registered once and must not close over
+  // stale state.
+  const latest = React.useRef({ canvas, viewport, transform });
+  latest.current = { canvas, viewport, transform };
+
+  React.useEffect(() => {
+    const element = viewportRef.current;
+    if (!element || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) =>
+      setViewport({ width: entry.contentRect.width, height: entry.contentRect.height })
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  const fitToViewport = React.useCallback(() => {
+    const { canvas: content, viewport: bounds } = latest.current;
+    setTransform(fitTransform(content, bounds, CANVAS_PADDING));
+  }, []);
+
+  // Re-fit when the model or the available space changes, so switching health models never leaves
+  // the graph scrolled off screen.
+  React.useEffect(() => {
+    fitToViewport();
+  }, [fitToViewport, layout, viewport.width, viewport.height]);
+
+  const applyZoom = React.useCallback((factor: number, pointerX?: number, pointerY?: number) => {
+    const { canvas: content, viewport: bounds, transform: current } = latest.current;
+    const originX = pointerX ?? bounds.width / 2;
+    const originY = pointerY ?? bounds.height / 2;
+    setTransform(clampTransform(zoomAt(current, factor, originX, originY), content, bounds));
+  }, []);
+
+  // Registered natively because React's onWheel is passive, and a passive listener cannot stop the
+  // page from scrolling while the pointer is over the graph.
+  React.useEffect(() => {
+    const element = viewportRef.current;
+    if (!element) {
+      return;
+    }
+
+    const onWheel = (event: WheelEvent) => {
+      const { canvas: content, viewport: bounds, transform: current } = latest.current;
+
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        const rect = element.getBoundingClientRect();
+        setTransform(
+          clampTransform(
+            zoomAt(current, Math.pow(ZOOM_STEP, -event.deltaY / 100), event.clientX - rect.left, event.clientY - rect.top),
+            content,
+            bounds
+          )
+        );
+        return;
+      }
+
+      // Only swallow the scroll while the graph itself still has room to move, so the page keeps
+      // scrolling once the user reaches the edge of the graph.
+      if (!canPan(current, content, bounds, event.deltaX, event.deltaY)) {
+        return;
+      }
+
+      event.preventDefault();
+      setTransform(clampTransform(panBy(current, -event.deltaX, -event.deltaY), content, bounds));
+    };
+
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanning(true);
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isPanning) {
+      return;
+    }
+
+    const { canvas: content, viewport: bounds, transform: current } = latest.current;
+    setTransform(clampTransform(panBy(current, event.movementX, event.movementY), content, bounds));
+  };
+
+  const endPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    setIsPanning(false);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const { canvas: content, viewport: bounds, transform: current } = latest.current;
+    const pan = (deltaX: number, deltaY: number) => {
+      event.preventDefault();
+      setTransform(clampTransform(panBy(current, deltaX, deltaY), content, bounds));
+    };
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        return pan(KEYBOARD_PAN_STEP, 0);
+      case 'ArrowRight':
+        return pan(-KEYBOARD_PAN_STEP, 0);
+      case 'ArrowUp':
+        return pan(0, KEYBOARD_PAN_STEP);
+      case 'ArrowDown':
+        return pan(0, -KEYBOARD_PAN_STEP);
+      case '+':
+      case '=':
+        event.preventDefault();
+        return applyZoom(ZOOM_STEP);
+      case '-':
+      case '_':
+        event.preventDefault();
+        return applyZoom(1 / ZOOM_STEP);
+      case '0':
+        event.preventDefault();
+        return fitToViewport();
+      default:
+        return undefined;
+    }
+  };
+
   if (layout.nodes.length === 0) {
     return null;
   }
-
-  const canvasWidth = layout.width + CANVAS_PADDING * 2;
-  const canvasHeight = layout.height + CANVAS_PADDING * 2;
-  // Deep models are scaled down so the whole graph stays visible without the page growing
-  // unbounded. The canvas is never enlarged, so a small model keeps its designed proportions.
-  const scale = Math.min(1, MAX_CANVAS_HEIGHT / canvasHeight);
 
   return (
     <div className={styles.container}>
@@ -45,46 +196,77 @@ export function HealthGraph({ entities, relationships }: HealthGraphProps) {
           {layout.danglingRelationships} relationship(s) reference an entity that is not part of this Health Model.
         </Alert>
       )}
-      <div className={styles.scrollArea}>
+      <div className={styles.viewportWrapper} style={{ height }}>
         <div
-          className={styles.canvas}
-          style={{
-            width: canvasWidth,
-            height: canvasHeight,
-            transform: `scale(${scale})`,
-          }}
+          ref={viewportRef}
+          className={isPanning ? styles.viewportPanning : styles.viewport}
+          role="application"
+          tabIndex={0}
+          aria-label="Health model graph. Drag to pan, use Ctrl and scroll to zoom, or press plus, minus and zero."
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endPan}
+          onPointerCancel={endPan}
+          onKeyDown={onKeyDown}
         >
-          <svg className={styles.connectors} width={canvasWidth} height={canvasHeight} aria-hidden="true">
-            {layout.edges.map((edge) => (
-              <path
-                key={edge.id}
-                d={buildConnectorPath(edge)}
-                fill="none"
-                stroke={theme.colors.border.medium}
-                strokeWidth={1}
-              />
-            ))}
-          </svg>
+          <div
+            className={styles.canvas}
+            style={{
+              width: canvas.width,
+              height: canvas.height,
+              transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+            }}
+          >
+            <svg className={styles.connectors} width={canvas.width} height={canvas.height} aria-hidden="true">
+              {layout.edges.map((edge) => (
+                <path
+                  key={edge.id}
+                  d={buildConnectorPath(edge)}
+                  fill="none"
+                  stroke={theme.colors.border.medium}
+                  strokeWidth={1}
+                />
+              ))}
+            </svg>
 
-          {layout.edges
-            .filter((edge) => edge.label)
-            .map((edge) => (
-              <div
-                key={`${edge.id}-label`}
-                className={styles.edgeLabel}
-                style={{
-                  left: edge.labelX + CANVAS_PADDING,
-                  top: edge.labelY + CANVAS_PADDING,
-                }}
-                title={edge.label}
-              >
-                {edge.label}
-              </div>
-            ))}
+            {layout.edges
+              .filter((edge) => edge.label)
+              .map((edge) => (
+                <div
+                  key={`${edge.id}-label`}
+                  className={styles.edgeLabel}
+                  style={{
+                    left: edge.labelX + CANVAS_PADDING,
+                    top: edge.labelY + CANVAS_PADDING,
+                  }}
+                  title={edge.label}
+                >
+                  {edge.label}
+                </div>
+              ))}
 
-          {layout.nodes.map((node) => (
-            <EntityCard key={node.name} node={node} layoutOptions={layout.options} />
-          ))}
+            {layout.nodes.map((node) => (
+              <EntityCard key={node.name} node={node} layoutOptions={layout.options} />
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.controls}>
+          <IconButton
+            name="plus"
+            tooltip="Zoom in"
+            aria-label="Zoom in"
+            disabled={transform.scale >= MAX_ZOOM}
+            onClick={() => applyZoom(ZOOM_STEP)}
+          />
+          <IconButton
+            name="minus"
+            tooltip="Zoom out"
+            aria-label="Zoom out"
+            disabled={transform.scale <= MIN_ZOOM}
+            onClick={() => applyZoom(1 / ZOOM_STEP)}
+          />
+          <IconButton name="compress-arrows" tooltip="Fit to view" aria-label="Fit to view" onClick={fitToViewport} />
         </div>
       </div>
     </div>
@@ -165,18 +347,49 @@ export function getHealthIcon(healthState: string): IconName {
 }
 
 function getStyles(theme: GrafanaTheme2) {
+  const viewport = css({
+    position: 'absolute',
+    inset: 0,
+    overflow: 'hidden',
+    touchAction: 'none',
+    cursor: 'grab',
+    '&:focus-visible': {
+      outline: `2px solid ${theme.colors.primary.border}`,
+      outlineOffset: -2,
+    },
+  });
+
   return {
     container: css({
       display: 'flex',
       flexDirection: 'column',
       gap: theme.spacing(1),
     }),
-    scrollArea: css({
-      overflow: 'auto',
+    viewportWrapper: css({
+      position: 'relative',
+      overflow: 'hidden',
+      border: `1px solid ${theme.colors.border.weak}`,
+      borderRadius: theme.shape.radius.default,
+      background: theme.colors.background.canvas,
+    }),
+    viewport,
+    viewportPanning: css(viewport, { cursor: 'grabbing' }),
+    controls: css({
+      position: 'absolute',
+      top: theme.spacing(1),
+      right: theme.spacing(1),
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(0.5),
+      padding: theme.spacing(0.5),
+      background: theme.colors.background.secondary,
+      border: `1px solid ${theme.colors.border.weak}`,
+      borderRadius: theme.shape.radius.default,
     }),
     canvas: css({
       position: 'relative',
       transformOrigin: 'top left',
+      userSelect: 'none',
     }),
     connectors: css({
       position: 'absolute',

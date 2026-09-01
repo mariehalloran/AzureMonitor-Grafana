@@ -1,0 +1,15 @@
+{
+  "type": "panel",
+  "name": "Azure Health Model Timeline",
+  "id": "azure-health-model-timeline-panel",
+  "info": {
+    "description": "Lists Azure Health Model entities with expandable health state timelines.",
+    "author": {
+      "name": "Microsoft"
+    },
+    "logos": {
+      "small": "../../img/health-models.svg",
+      "large": "../../img/health-models.svg"
+    }
+  }
+}

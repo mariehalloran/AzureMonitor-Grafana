@@ -22,6 +22,7 @@ import {
 import { HealthStateBadge } from './HealthStateBadge';
 import { formatHealthTimestamp, HealthTimelineBar } from './HealthTimelineBar';
 import { HealthGraph } from './HealthGraph';
+import { describeSignals, formatRelativeTime, getEntityHealthMetrics } from './entityHealthMetrics';
 import { summarizeHealthStates } from './healthModelUtils';
 import {
   EntityHistoryResult,
@@ -628,6 +629,9 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
               <tr>
                 <th>Name</th>
                 <th>Health state</th>
+                <th>Last checked</th>
+                <th>Signals</th>
+                <th>Alerts</th>
                 <th>Impact</th>
                 <th>Health objective</th>
                 <th>Provisioning state</th>
@@ -637,6 +641,7 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
               {displayedEntities.map((entity) => {
                 const isExpanded = state.expandedEntityId === entity.id;
                 const entityDisplayName = entity.properties?.displayName ?? entity.name;
+                const metrics = getEntityHealthMetrics(entity);
                 return (
                   <React.Fragment key={entity.id}>
                     <tr>
@@ -655,6 +660,11 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
                       <td>
                         <HealthStateBadge healthState={entity.properties?.healthState} />
                       </td>
+                      <td title={metrics.lastCheckedAt ? formatHealthTimestamp(metrics.lastCheckedAt) : undefined}>
+                        {metrics.lastCheckedAt ? formatRelativeTime(metrics.lastCheckedAt) : '--'}
+                      </td>
+                      <td>{describeSignals(metrics)}</td>
+                      <td>{metrics.alertSeverities.length > 0 ? metrics.alertSeverities.join(', ') : '--'}</td>
                       <td>{entity.properties?.impact ?? '--'}</td>
                       <td>
                         {entity.properties?.healthObjective == null ? '--' : `${entity.properties.healthObjective}%`}
@@ -663,7 +673,7 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
                     </tr>
                     {isExpanded && (
                       <tr className={styles.historyRow}>
-                        <td colSpan={5}>
+                        <td colSpan={8}>
                           <EntityHistoryPanel
                             entity={entity}
                             historyState={state.entityHistoryById[entity.id]}
@@ -688,8 +698,7 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value?: number }) {
-  const styles = useStyles2(getStyles);
+function SummaryCard({ label, value }: { label: string; value?: number }) {  const styles = useStyles2(getStyles);
   return (
     <div className={styles.summaryCard}>
       <div className={styles.summaryValue}>{value ?? '--'}</div>

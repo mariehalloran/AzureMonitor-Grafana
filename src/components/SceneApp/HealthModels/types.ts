@@ -28,6 +28,16 @@ export interface HealthModelEntity {
     provisioningState?: string;
     healthObjective?: number | null;
     tags?: Record<string, string>;
+    /**
+     * Alert definitions keyed by the health state that triggers them, for example `unhealthy`.
+     */
+    alerts?: Record<string, { severity?: string; description?: string } | undefined>;
+    /**
+     * Signal configuration and last reported status, keyed by signal group (`azureResource`,
+     * `azureLogAnalytics`, `dependencies`, ...). The shape varies per group and is still in
+     * preview, so it is read defensively rather than modelled exactly.
+     */
+    signalGroups?: Record<string, unknown>;
   };
 }
 

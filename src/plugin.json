@@ -31,6 +31,27 @@
   },
   "includes": [
     {
+      "type": "dashboard",
+      "name": "Azure Health Models",
+      "path": "dashboards/health-models.json",
+      "addToNav": false
+    },
+    {
+      "type": "datasource",
+      "name": "Azure Health Models",
+      "path": "datasources/health-models/plugin.json"
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Graph",
+      "path": "panels/health-model-graph/plugin.json"
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Timeline",
+      "path": "panels/health-model-timeline/plugin.json"
+    },
+    {
       "type": "page",
       "name": "Azure Cloud Native Monitoring",
       "path": "/a/%PLUGIN_ID%/clusternavigation",
