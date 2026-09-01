@@ -1,0 +1,16 @@
+{
+  "type": "panel",
+  "name": "Azure Health Model Topology",
+  "id": "azure-health-model-topology-panel",
+  "skipDataQuery": true,
+  "info": {
+    "description": "Displays Azure Health Model entities and their relationships as a health-coloured component tree.",
+    "author": {
+      "name": "Microsoft"
+    },
+    "logos": {
+      "small": "../../img/azure logo.svg",
+      "large": "../../img/azure logo.svg"
+    }
+  }
+}

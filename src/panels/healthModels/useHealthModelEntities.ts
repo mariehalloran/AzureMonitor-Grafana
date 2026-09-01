@@ -5,7 +5,7 @@ import {
   HealthModelsClient,
   parseHealthModelResourceId,
 } from '../../components/SceneApp/HealthModels/HealthModelsApi';
-import { HealthModelEntity, PagedResult } from '../../components/SceneApp/HealthModels/types';
+import { HealthModelEntity, HealthModelRelationship, PagedResult } from '../../components/SceneApp/HealthModels/types';
 import {
   HealthModelPanelConfiguration,
   isHealthModelPanelConfigured,
@@ -15,6 +15,7 @@ import {
 interface HealthModelEntitiesState {
   loading: boolean;
   entities: PagedResult<HealthModelEntity>;
+  relationships: PagedResult<HealthModelRelationship>;
   client?: HealthModelsClient;
   error?: string;
 }
@@ -25,13 +26,21 @@ const EMPTY_ENTITIES: PagedResult<HealthModelEntity> = {
   truncated: false,
 };
 
+const EMPTY_RELATIONSHIPS: PagedResult<HealthModelRelationship> = {
+  items: [],
+  pagesLoaded: 0,
+  truncated: false,
+};
+
 export function useHealthModelEntities(
   configuration: HealthModelPanelConfiguration | undefined,
-  refreshKey: number
+  refreshKey: number,
+  includeRelationships = false
 ): HealthModelEntitiesState & { configuration: HealthModelPanelConfiguration } {
   const [state, setState] = React.useState<HealthModelEntitiesState>({
     loading: false,
     entities: EMPTY_ENTITIES,
+    relationships: EMPTY_RELATIONSHIPS,
   });
 
   // Re-resolved whenever the panel re-renders, which is how variable changes reach the panel.
@@ -50,6 +59,7 @@ export function useHealthModelEntities(
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
+        relationships: EMPTY_RELATIONSHIPS,
       });
       return;
     }
@@ -63,6 +73,7 @@ export function useHealthModelEntities(
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
+        relationships: EMPTY_RELATIONSHIPS,
         error: getHealthModelsErrorMessage(parseError),
       });
       return;
@@ -72,6 +83,7 @@ export function useHealthModelEntities(
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
+        relationships: EMPTY_RELATIONSHIPS,
         error: 'The selected Health Model does not belong to the selected subscription.',
       });
       return;
@@ -80,17 +92,25 @@ export function useHealthModelEntities(
     setState({
       loading: true,
       entities: EMPTY_ENTITIES,
+      relationships: EMPTY_RELATIONSHIPS,
     });
     void createHealthModelsApi(activeConfiguration.datasourceUid)
-      .then(async (client) => ({
-        client,
-        entities: await client.listEntities(activeConfiguration.healthModelId),
-      }))
+      .then(async (client) => {
+        const [entities, relationships] = await Promise.all([
+          client.listEntities(activeConfiguration.healthModelId),
+          includeRelationships
+            ? client.listRelationships(activeConfiguration.healthModelId)
+            : Promise.resolve(EMPTY_RELATIONSHIPS),
+        ]);
+
+        return { client, entities, relationships };
+      })
       .then((result) => {
         if (!cancelled) {
           setState({
             loading: false,
             entities: result.entities,
+            relationships: result.relationships,
             client: result.client,
           });
         }
@@ -100,6 +120,7 @@ export function useHealthModelEntities(
           setState({
             loading: false,
             entities: EMPTY_ENTITIES,
+            relationships: EMPTY_RELATIONSHIPS,
             error: getHealthModelsErrorMessage(error),
           });
         }
@@ -108,7 +129,7 @@ export function useHealthModelEntities(
     return () => {
       cancelled = true;
     };
-  }, [datasourceUid, healthModelId, subscriptionId]);
+  }, [datasourceUid, healthModelId, includeRelationships, subscriptionId]);
 
   return { ...state, configuration: resolved };
 }

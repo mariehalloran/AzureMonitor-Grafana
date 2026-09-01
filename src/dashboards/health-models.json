@@ -48,6 +48,27 @@
         "historyHours": 24,
         "maxEntities": 100
       }
+    },
+    {
+      "type": "azure-health-model-topology-panel",
+      "title": "Component topology",
+      "description": "Health Model entities arranged by their parent and child relationships.",
+      "id": 3,
+      "gridPos": {
+        "h": 15,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "options": {
+        "configuration": {
+          "datasourceUid": "${azmon_ds}",
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}"
+        },
+        "showRelationshipLabels": true,
+        "fitToPanel": true
+      }
     }
   ],
   "preload": false,
