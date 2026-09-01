@@ -19,6 +19,8 @@ import {
   HealthModelsClientFactory,
   parseHealthModelResourceId,
 } from './HealthModelsApi';
+import { HealthStateBadge } from './HealthStateBadge';
+import { formatHealthTimestamp, HealthTimelineBar } from './HealthTimelineBar';
 import { summarizeHealthStates } from './healthModelUtils';
 import {
   EntityHistoryResult,
@@ -30,7 +32,6 @@ import {
 } from './types';
 
 const MAX_VISIBLE_ENTITIES = 200;
-const MAX_VISIBLE_HISTORY_EVENTS = 200;
 const ENTITY_HISTORY_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 const ENTITY_HISTORY_PAGE_SIZE = 1000;
 
@@ -722,21 +723,19 @@ function EntityHistoryPanel({
     );
   }
 
-  const history = [...(historyState.result?.history ?? [])].sort((left, right) =>
-    right.occurredAt.localeCompare(left.occurredAt)
-  );
-  const displayedHistory = history.slice(0, MAX_VISIBLE_HISTORY_EVENTS);
-
   return (
     <div className={styles.historyPanel}>
       <div className={styles.historyHeader}>
         <div>
           <strong>Health history</strong>
           <div className={styles.metadata}>
-            {formatHistoryTimestamp(historyState.startAt)} to {formatHistoryTimestamp(historyState.endAt)}
+            {formatHealthTimestamp(historyState.startAt)} to {formatHealthTimestamp(historyState.endAt)}
           </div>
         </div>
-        <HealthStateBadge healthState={entity.properties?.healthState} />
+        <div className={styles.currentHealthState}>
+          <span>Current state</span>
+          <HealthStateBadge healthState={entity.properties?.healthState} />
+        </div>
       </div>
 
       {historyState.result?.truncated && (
@@ -745,61 +744,14 @@ function EntityHistoryPanel({
         </Alert>
       )}
 
-      {history.length === 0 ? (
-        <div className={styles.historyEmpty}>No health transitions occurred during this period.</div>
-      ) : (
-        <>
-          <table className={styles.historyTable}>
-            <thead>
-              <tr>
-                <th>Occurred at</th>
-                <th>Previous state</th>
-                <th>New state</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedHistory.map((transition, index) => (
-                <tr key={`${transition.occurredAt}-${index}`}>
-                  <td>{formatHistoryTimestamp(transition.occurredAt)}</td>
-                  <td>
-                    <HealthStateBadge healthState={transition.previousState} />
-                  </td>
-                  <td>
-                    <HealthStateBadge healthState={transition.newState} />
-                  </td>
-                  <td>{transition.reason ?? '--'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {history.length > MAX_VISIBLE_HISTORY_EVENTS && (
-            <div className={styles.metadata}>
-              Showing the first {MAX_VISIBLE_HISTORY_EVENTS} of {history.length} transitions.
-            </div>
-          )}
-        </>
-      )}
+      <HealthTimelineBar
+        transitions={historyState.result?.history ?? []}
+        startAt={historyState.startAt}
+        endAt={historyState.endAt}
+        currentState={entity.properties?.healthState}
+      />
     </div>
   );
-}
-
-function formatHistoryTimestamp(timestamp: string): string {
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? timestamp : date.toLocaleString();
-}
-
-function HealthStateBadge({ healthState }: { healthState?: string }) {
-  switch (healthState?.toLowerCase()) {
-    case 'healthy':
-      return <Badge text="Healthy" color="green" />;
-    case 'degraded':
-      return <Badge text="Degraded" color="orange" />;
-    case 'unhealthy':
-      return <Badge text="Unhealthy" color="red" />;
-    default:
-      return <Badge text={healthState ?? 'Unknown'} color="darkgrey" />;
-  }
 }
 
 function getStyles(theme: GrafanaTheme2) {
@@ -945,26 +897,11 @@ function getStyles(theme: GrafanaTheme2) {
       justifyContent: 'space-between',
       gap: theme.spacing(2),
     }),
-    historyTable: css({
-      width: '100%',
-      borderCollapse: 'collapse',
-      background: theme.colors.background.primary,
-      '& th, & td': {
-        padding: theme.spacing(1),
-        textAlign: 'left',
-        border: `1px solid ${theme.colors.border.weak}`,
-      },
-      '& th': {
-        color: theme.colors.text.secondary,
-        fontWeight: theme.typography.fontWeightMedium,
-      },
-    }),
-    historyEmpty: css({
-      padding: theme.spacing(2),
+    currentHealthState: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
       color: theme.colors.text.secondary,
-      background: theme.colors.background.primary,
-      border: `1px solid ${theme.colors.border.weak}`,
-      borderRadius: theme.shape.radius.default,
     }),
     empty: css({
       padding: theme.spacing(3),

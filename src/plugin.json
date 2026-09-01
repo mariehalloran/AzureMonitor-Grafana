@@ -31,6 +31,16 @@
   },
   "includes": [
     {
+      "type": "panel",
+      "name": "Azure Health Model Entities",
+      "path": "panels/health-model-entities/plugin.json"
+    },
+    {
+      "type": "panel",
+      "name": "Azure Health Model Health Distribution",
+      "path": "panels/health-model-health-distribution/plugin.json"
+    },
+    {
       "type": "page",
       "name": "Azure Cloud Native Monitoring",
       "path": "/a/%PLUGIN_ID%/clusternavigation",

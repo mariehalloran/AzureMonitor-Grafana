@@ -10,9 +10,16 @@ The app now has a **Health Models** tab that:
 - Lists Health Model resources in the selected subscription.
 - Loads the selected model's current entities and relationships.
 - Summarizes entity health states and displays basic entity details.
-- Lazily loads the previous 24 hours of health transitions when an entity row is expanded.
+- Lazily loads the previous 24 hours of health transitions and renders them as a proportional horizontal state timeline when an entity row is expanded.
 - Follows ARM continuation links with a bounded page limit and identifies partial results.
 - Handles model, entity, and relationship failures independently so available data remains visible.
+
+The app also bundles two nested dashboard panel plugins:
+
+- **Azure Health Model Entities** renders the entity table with expandable health history timelines.
+- **Azure Health Model Health Distribution** renders current entity health counts as a pie or donut chart.
+
+Both panels are selectable from Grafana's standard dashboard visualization picker and use panel options to select the Azure Monitor datasource, subscription, and Health Model.
 
 The implementation is split across the following files:
 
