@@ -20,9 +20,9 @@ export function HealthModelHealthDistributionPanel({
 }: PanelProps<HealthModelHealthDistributionPanelOptions>) {
   const styles = useStyles2(getStyles);
   const theme = useTheme2();
-  const { loading, entities, error } = useHealthModelEntities(options.configuration, renderCounter);
+  const { loading, entities, error, configuration } = useHealthModelEntities(options.configuration, renderCounter);
 
-  if (!isHealthModelPanelConfigured(options.configuration)) {
+  if (!isHealthModelPanelConfigured(configuration)) {
     return (
       <PanelMessage height={height}>
         Configure an Azure Monitor datasource, subscription, and Health Model in the panel options.

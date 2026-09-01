@@ -31,6 +31,12 @@
   },
   "includes": [
     {
+      "type": "dashboard",
+      "name": "Health Models",
+      "path": "dashboards/health-models.json",
+      "addToNav": false
+    },
+    {
       "type": "panel",
       "name": "Azure Health Model Entities",
       "path": "panels/health-model-entities/plugin.json"

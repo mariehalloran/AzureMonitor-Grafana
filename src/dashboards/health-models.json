@@ -1,0 +1,130 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "azure-health-model-health-distribution-panel",
+      "title": "Entity health distribution",
+      "description": "Current distribution of entity health states for the selected Health Model.",
+      "id": 1,
+      "gridPos": {
+        "h": 11,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "configuration": {
+          "datasourceUid": "${azmon_ds}",
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}"
+        },
+        "displayMode": "donut",
+        "showLegend": true
+      }
+    },
+    {
+      "type": "azure-health-model-entities-panel",
+      "title": "Entities",
+      "description": "Health Model entities. Expand a row to load its health history timeline.",
+      "id": 2,
+      "gridPos": {
+        "h": 11,
+        "w": 16,
+        "x": 8,
+        "y": 0
+      },
+      "options": {
+        "configuration": {
+          "datasourceUid": "${azmon_ds}",
+          "subscriptionId": "${subscription}",
+          "healthModelId": "${healthmodel}"
+        },
+        "historyHours": 24,
+        "maxEntities": 100
+      }
+    }
+  ],
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["azure", "health models"],
+  "templating": {
+    "list": [
+      {
+        "name": "azmon_ds",
+        "label": "Azure Monitor datasource",
+        "type": "datasource",
+        "query": "grafana-azure-monitor-datasource",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false
+      },
+      {
+        "name": "subscription",
+        "label": "Subscription",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "${azmon_ds}"
+        },
+        "query": {
+          "refId": "A",
+          "queryType": "Azure Subscriptions"
+        },
+        "current": {},
+        "options": [],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      },
+      {
+        "name": "healthmodel",
+        "label": "Health Model",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-azure-monitor-datasource",
+          "uid": "${azmon_ds}"
+        },
+        "query": {
+          "refId": "A",
+          "queryType": "Azure Resource Graph",
+          "azureResourceGraph": {
+            "query": "resources | where type =~ 'microsoft.cloudhealth/healthmodels' | project text = name, value = id | order by text asc"
+          },
+          "subscriptions": ["$subscription"]
+        },
+        "current": {},
+        "options": [],
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Health Models",
+  "uid": "azure-health-models",
+  "version": 1,
+  "weekStart": ""
+}

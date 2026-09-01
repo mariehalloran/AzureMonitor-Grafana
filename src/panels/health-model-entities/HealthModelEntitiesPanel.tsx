@@ -33,7 +33,10 @@ export function HealthModelEntitiesPanel({
   renderCounter,
 }: PanelProps<HealthModelEntitiesPanelOptions>) {
   const styles = useStyles2(getStyles);
-  const { loading, entities, client, error } = useHealthModelEntities(options.configuration, renderCounter);
+  const { loading, entities, client, error, configuration } = useHealthModelEntities(
+    options.configuration,
+    renderCounter
+  );
   const [expandedEntityId, setExpandedEntityId] = React.useState<string>();
   const [historyByEntityId, setHistoryByEntityId] = React.useState<Record<string, EntityHistoryState>>({});
   const historyRequestIds = React.useRef(new Map<string, number>());
@@ -41,9 +44,7 @@ export function HealthModelEntitiesPanel({
   const historyGeneration = React.useRef(0);
   const historyHours = clamp(options.historyHours ?? 24, 1, 720);
   const maxEntities = clamp(options.maxEntities ?? 100, 1, 500);
-  const contextKey = `${options.configuration?.datasourceUid ?? ''}|${
-    options.configuration?.healthModelId ?? ''
-  }|${historyHours}`;
+  const contextKey = `${configuration.datasourceUid ?? ''}|${configuration.healthModelId ?? ''}|${historyHours}`;
 
   React.useEffect(() => {
     const requestIds = historyRequestIds.current;
@@ -55,7 +56,7 @@ export function HealthModelEntitiesPanel({
     return () => {
       requestIds.clear();
     };
-  }, [contextKey, renderCounter]);
+  }, [contextKey]);
 
   const setHistoryState = React.useCallback((entityId: string, historyState: EntityHistoryState) => {
     setHistoryByEntityId((current) => ({
@@ -66,7 +67,7 @@ export function HealthModelEntitiesPanel({
 
   const loadHistory = React.useCallback(
     async (entity: HealthModelEntity, force = false) => {
-      const healthModelId = options.configuration?.healthModelId;
+      const healthModelId = configuration.healthModelId;
       const existingHistory = historyByEntityId[entity.id];
       if (!client || !healthModelId || (!force && (existingHistory?.loading || existingHistory?.result))) {
         return;
@@ -112,7 +113,7 @@ export function HealthModelEntitiesPanel({
         });
       }
     },
-    [client, historyByEntityId, historyHours, options.configuration?.healthModelId, setHistoryState]
+    [client, historyByEntityId, historyHours, configuration.healthModelId, setHistoryState]
   );
 
   const toggleHistory = (entity: HealthModelEntity) => {
@@ -125,7 +126,7 @@ export function HealthModelEntitiesPanel({
     void loadHistory(entity);
   };
 
-  if (!isHealthModelPanelConfigured(options.configuration)) {
+  if (!isHealthModelPanelConfigured(configuration)) {
     return (
       <PanelMessage height={height}>
         Configure an Azure Monitor datasource, subscription, and Health Model in the panel options.

@@ -6,7 +6,11 @@ import {
   parseHealthModelResourceId,
 } from '../../components/SceneApp/HealthModels/HealthModelsApi';
 import { HealthModelEntity, PagedResult } from '../../components/SceneApp/HealthModels/types';
-import { HealthModelPanelConfiguration, isHealthModelPanelConfigured } from './types';
+import {
+  HealthModelPanelConfiguration,
+  isHealthModelPanelConfigured,
+  resolveHealthModelConfiguration,
+} from './types';
 
 interface HealthModelEntitiesState {
   loading: boolean;
@@ -24,19 +28,25 @@ const EMPTY_ENTITIES: PagedResult<HealthModelEntity> = {
 export function useHealthModelEntities(
   configuration: HealthModelPanelConfiguration | undefined,
   refreshKey: number
-): HealthModelEntitiesState {
+): HealthModelEntitiesState & { configuration: HealthModelPanelConfiguration } {
   const [state, setState] = React.useState<HealthModelEntitiesState>({
     loading: false,
     entities: EMPTY_ENTITIES,
   });
-  const datasourceUid = configuration?.datasourceUid;
-  const subscriptionId = configuration?.subscriptionId;
-  const healthModelId = configuration?.healthModelId;
+
+  // Re-resolved whenever the panel re-renders, which is how variable changes reach the panel.
+  const resolved = React.useMemo(
+    () => resolveHealthModelConfiguration(configuration),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [configuration, refreshKey]
+  );
+  const { datasourceUid, subscriptionId, healthModelId } = resolved;
 
   React.useEffect(() => {
     let cancelled = false;
+    const activeConfiguration = { datasourceUid, subscriptionId, healthModelId };
 
-    if (!isHealthModelPanelConfigured(configuration)) {
+    if (!isHealthModelPanelConfigured(activeConfiguration)) {
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
@@ -44,8 +54,21 @@ export function useHealthModelEntities(
       return;
     }
 
-    const resourceId = parseHealthModelResourceId(configuration.healthModelId);
-    if (resourceId.subscriptionId.toLowerCase() !== configuration.subscriptionId.toLowerCase()) {
+    // A dashboard variable can supply any string, so an unparseable value must surface as a panel
+    // message rather than throwing out of the effect and tripping the panel error boundary.
+    let resourceId;
+    try {
+      resourceId = parseHealthModelResourceId(activeConfiguration.healthModelId);
+    } catch (parseError) {
+      setState({
+        loading: false,
+        entities: EMPTY_ENTITIES,
+        error: getHealthModelsErrorMessage(parseError),
+      });
+      return;
+    }
+
+    if (resourceId.subscriptionId.toLowerCase() !== activeConfiguration.subscriptionId.toLowerCase()) {
       setState({
         loading: false,
         entities: EMPTY_ENTITIES,
@@ -58,10 +81,10 @@ export function useHealthModelEntities(
       loading: true,
       entities: EMPTY_ENTITIES,
     });
-    void createHealthModelsApi(configuration.datasourceUid)
+    void createHealthModelsApi(activeConfiguration.datasourceUid)
       .then(async (client) => ({
         client,
-        entities: await client.listEntities(configuration.healthModelId),
+        entities: await client.listEntities(activeConfiguration.healthModelId),
       }))
       .then((result) => {
         if (!cancelled) {
@@ -85,7 +108,7 @@ export function useHealthModelEntities(
     return () => {
       cancelled = true;
     };
-  }, [configuration, datasourceUid, healthModelId, refreshKey, subscriptionId]);
+  }, [datasourceUid, healthModelId, subscriptionId]);
 
-  return state;
+  return { ...state, configuration: resolved };
 }
