@@ -1,9 +1,9 @@
-import { HealthModelEntity, HealthModelRelationship } from '../../components/SceneApp/HealthModels/types';
-import { buildTopology, DEFAULT_TOPOLOGY_LAYOUT } from './topology';
+import { HealthModelEntity, HealthModelRelationship } from './types';
+import { buildHealthGraph, DEFAULT_HEALTH_GRAPH_LAYOUT } from './healthGraph';
 
-describe('buildTopology', () => {
+describe('buildHealthGraph', () => {
   test('nests children below their parent and centres the parent over them', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('left'), createEntity('right')],
       [createRelationship('r1', 'root', 'left'), createRelationship('r2', 'root', 'right')]
     );
@@ -17,14 +17,14 @@ describe('buildTopology', () => {
     expect(right.depth).toBe(1);
     expect(left.y).toBeGreaterThan(root.y);
 
-    const rootCentre = root.x + DEFAULT_TOPOLOGY_LAYOUT.nodeWidth / 2;
-    const leftCentre = left.x + DEFAULT_TOPOLOGY_LAYOUT.nodeWidth / 2;
-    const rightCentre = right.x + DEFAULT_TOPOLOGY_LAYOUT.nodeWidth / 2;
+    const rootCentre = root.x + DEFAULT_HEALTH_GRAPH_LAYOUT.nodeWidth / 2;
+    const leftCentre = left.x + DEFAULT_HEALTH_GRAPH_LAYOUT.nodeWidth / 2;
+    const rightCentre = right.x + DEFAULT_HEALTH_GRAPH_LAYOUT.nodeWidth / 2;
     expect(rootCentre).toBeCloseTo((leftCentre + rightCentre) / 2);
   });
 
   test('uses the relationship display name as the edge label', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('child')],
       [createRelationship('r1', 'root', 'child', 'Root to child')]
     );
@@ -34,7 +34,7 @@ describe('buildTopology', () => {
   });
 
   test('falls back to the relationship name when no display name is present', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('child')],
       [createRelationship('r1', 'root', 'child')]
     );
@@ -43,7 +43,7 @@ describe('buildTopology', () => {
   });
 
   test('treats entities without a parent as roots, including unrelated orphans', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('child'), createEntity('orphan')],
       [createRelationship('r1', 'root', 'child')]
     );
@@ -54,7 +54,7 @@ describe('buildTopology', () => {
   });
 
   test('counts relationships that reference unknown entities without placing them', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root')],
       [createRelationship('r1', 'root', 'missing'), createRelationship('r2', 'ghost', 'root')]
     );
@@ -65,7 +65,7 @@ describe('buildTopology', () => {
   });
 
   test('keeps a single parent when several relationships claim the same child', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('a'), createEntity('b'), createEntity('shared')],
       [createRelationship('r1', 'a', 'shared'), createRelationship('r2', 'b', 'shared')]
     );
@@ -76,7 +76,7 @@ describe('buildTopology', () => {
   });
 
   test('terminates and places every entity when relationships form a cycle', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('a'), createEntity('b'), createEntity('c')],
       [createRelationship('r1', 'a', 'b'), createRelationship('r2', 'b', 'c'), createRelationship('r3', 'c', 'a')]
     );
@@ -86,14 +86,14 @@ describe('buildTopology', () => {
   });
 
   test('ignores a relationship that points an entity at itself', () => {
-    const layout = buildTopology([createEntity('a')], [createRelationship('r1', 'a', 'a')]);
+    const layout = buildHealthGraph([createEntity('a')], [createRelationship('r1', 'a', 'a')]);
 
     expect(layout.nodes).toHaveLength(1);
     expect(layout.edges).toHaveLength(0);
   });
 
   test('staggers adjacent sibling labels so they do not overlap', () => {
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('a'), createEntity('b')],
       [createRelationship('r1', 'root', 'a'), createRelationship('r2', 'root', 'b')]
     );
@@ -105,7 +105,7 @@ describe('buildTopology', () => {
   test('staggers labels by rendered position, not by relationship order', () => {
     // Relationship names sort in the opposite order to the entity display names, so an
     // insertion-ordered stagger would place two horizontally adjacent labels at the same height.
-    const layout = buildTopology(
+    const layout = buildHealthGraph(
       [createEntity('root'), createEntity('a', 'Healthy'), createEntity('b'), createEntity('c')],
       [
         createRelationship('r3', 'root', 'a'),
@@ -127,7 +127,7 @@ describe('buildTopology', () => {
   });
 
   test('carries entity health state and icon onto the node', () => {
-    const layout = buildTopology([createEntity('root', 'Degraded', 'AppService')], []);
+    const layout = buildHealthGraph([createEntity('root', 'Degraded', 'AppService')], []);
 
     const root = findNode(layout, 'root');
     expect(root.healthState).toBe('Degraded');
@@ -135,7 +135,7 @@ describe('buildTopology', () => {
   });
 
   test('returns an empty layout when there are no entities', () => {
-    const layout = buildTopology([], []);
+    const layout = buildHealthGraph([], []);
 
     expect(layout.nodes).toEqual([]);
     expect(layout.edges).toEqual([]);
@@ -144,7 +144,7 @@ describe('buildTopology', () => {
   });
 });
 
-function findNode(layout: ReturnType<typeof buildTopology>, name: string) {
+function findNode(layout: ReturnType<typeof buildHealthGraph>, name: string) {
   const node = layout.nodes.find((candidate) => candidate.name === name);
   if (!node) {
     throw new Error(`Expected a node named ${name}.`);

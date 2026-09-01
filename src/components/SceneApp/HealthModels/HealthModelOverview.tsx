@@ -21,6 +21,7 @@ import {
 } from './HealthModelsApi';
 import { HealthStateBadge } from './HealthStateBadge';
 import { formatHealthTimestamp, HealthTimelineBar } from './HealthTimelineBar';
+import { HealthGraph } from './HealthGraph';
 import { summarizeHealthStates } from './healthModelUtils';
 import {
   EntityHistoryResult,
@@ -609,6 +610,13 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
           value={state.relationships.pagesLoaded > 0 ? state.relationships.items.length : undefined}
         />
       </div>
+
+      {state.entities.items.length > 0 && (
+        <>
+          <h3 className={styles.sectionTitle}>Health graph</h3>
+          <HealthGraph entities={state.entities.items} relationships={state.relationships.items} />
+        </>
+      )}
 
       <h3 className={styles.sectionTitle}>Entities</h3>
       {state.entities.pagesLoaded > 0 && state.entities.items.length === 0 ? (

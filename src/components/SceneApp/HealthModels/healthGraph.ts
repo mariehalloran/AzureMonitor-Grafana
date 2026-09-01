@@ -1,6 +1,6 @@
-import { HealthModelEntity, HealthModelRelationship } from '../../components/SceneApp/HealthModels/types';
+import { HealthModelEntity, HealthModelRelationship } from './types';
 
-export interface TopologyLayoutOptions {
+export interface HealthGraphLayoutOptions {
   nodeWidth: number;
   nodeHeight: number;
   horizontalGap: number;
@@ -8,7 +8,7 @@ export interface TopologyLayoutOptions {
   labelStagger: number;
 }
 
-export const DEFAULT_TOPOLOGY_LAYOUT: TopologyLayoutOptions = {
+export const DEFAULT_HEALTH_GRAPH_LAYOUT: HealthGraphLayoutOptions = {
   nodeWidth: 210,
   nodeHeight: 92,
   horizontalGap: 32,
@@ -16,7 +16,7 @@ export const DEFAULT_TOPOLOGY_LAYOUT: TopologyLayoutOptions = {
   labelStagger: 26,
 };
 
-export interface TopologyNode {
+export interface HealthGraphNode {
   name: string;
   displayName: string;
   healthState?: string;
@@ -27,7 +27,7 @@ export interface TopologyNode {
   y: number;
 }
 
-export interface TopologyEdge {
+export interface HealthGraphEdge {
   id: string;
   label: string;
   parentName: string;
@@ -41,12 +41,12 @@ export interface TopologyEdge {
   labelY: number;
 }
 
-export interface TopologyLayout {
-  nodes: TopologyNode[];
-  edges: TopologyEdge[];
+export interface HealthGraphLayout {
+  nodes: HealthGraphNode[];
+  edges: HealthGraphEdge[];
   width: number;
   height: number;
-  options: TopologyLayoutOptions;
+  options: HealthGraphLayoutOptions;
   /** Relationships whose parent or child is missing from the entity list. */
   danglingRelationships: number;
 }
@@ -57,12 +57,12 @@ interface EntityIconProperties {
   };
 }
 
-export function buildTopology(
+export function buildHealthGraph(
   entities: HealthModelEntity[],
   relationships: HealthModelRelationship[],
-  layoutOptions: Partial<TopologyLayoutOptions> = {}
-): TopologyLayout {
-  const options = { ...DEFAULT_TOPOLOGY_LAYOUT, ...layoutOptions };
+  layoutOptions: Partial<HealthGraphLayoutOptions> = {}
+): HealthGraphLayout {
+  const options = { ...DEFAULT_HEALTH_GRAPH_LAYOUT, ...layoutOptions };
   const entitiesByName = new Map<string, HealthModelEntity>();
   for (const entity of entities) {
     entitiesByName.set(entity.name, entity);
@@ -106,8 +106,8 @@ export function buildTopology(
     .filter((name) => !childToParent.has(name))
     .sort((left, right) => compareByDisplayName(entitiesByName, left, right));
 
-  const nodes: TopologyNode[] = [];
-  const nodesByName = new Map<string, TopologyNode>();
+  const nodes: HealthGraphNode[] = [];
+  const nodesByName = new Map<string, HealthGraphNode>();
   const placed = new Set<string>();
   let cursorX = 0;
 
@@ -132,7 +132,7 @@ export function buildTopology(
       centerX = (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
     }
 
-    const node: TopologyNode = {
+    const node: HealthGraphNode = {
       name,
       displayName: entity.properties?.displayName ?? entity.name,
       healthState: entity.properties?.healthState,
@@ -158,7 +158,7 @@ export function buildTopology(
     }
   }
 
-  const edges: TopologyEdge[] = [];
+  const edges: HealthGraphEdge[] = [];
   for (const [childName, parentName] of childToParent) {
     const childNode = nodesByName.get(childName);
     const parentNode = nodesByName.get(parentName);

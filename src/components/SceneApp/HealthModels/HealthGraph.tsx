@@ -1,81 +1,45 @@
 import { css } from '@emotion/css';
-import { GrafanaTheme2, IconName, PanelProps } from '@grafana/data';
-import { Alert, Icon, Spinner, useStyles2, useTheme2 } from '@grafana/ui';
+import { GrafanaTheme2, IconName } from '@grafana/data';
+import { Alert, Icon, useStyles2, useTheme2 } from '@grafana/ui';
 import React from 'react';
-import { getHealthStateColor } from '../../components/SceneApp/HealthModels/HealthTimelineBar';
-import { HealthModelPanelOptions, isHealthModelPanelConfigured } from '../healthModels/types';
-import { buildTopology, TopologyEdge, TopologyLayoutOptions, TopologyNode } from '../healthModels/topology';
-import { useHealthModelEntities } from '../healthModels/useHealthModelEntities';
-
-export interface HealthModelTopologyPanelOptions extends HealthModelPanelOptions {
-  showRelationshipLabels?: boolean;
-  fitToPanel?: boolean;
-}
+import { getHealthStateColor } from './HealthTimelineBar';
+import {
+  buildHealthGraph,
+  HealthGraphEdge,
+  HealthGraphLayoutOptions,
+  HealthGraphNode,
+} from './healthGraph';
+import { HealthModelEntity, HealthModelRelationship } from './types';
 
 const CANVAS_PADDING = 16;
+const MAX_CANVAS_HEIGHT = 620;
 
-export function HealthModelTopologyPanel({
-  options,
-  width,
-  height,
-  renderCounter,
-}: PanelProps<HealthModelTopologyPanelOptions>) {
+interface HealthGraphProps {
+  entities: HealthModelEntity[];
+  relationships: HealthModelRelationship[];
+}
+
+/**
+ * Draws Health Model entities as a top-down graph, with each entity coloured by its health state
+ * and connected to its children through elbow connectors.
+ */
+export function HealthGraph({ entities, relationships }: HealthGraphProps) {
   const styles = useStyles2(getStyles);
   const theme = useTheme2();
-  const { loading, entities, relationships, error, configuration } = useHealthModelEntities(
-    options.configuration,
-    renderCounter,
-    true
-  );
-
-  const layout = React.useMemo(
-    () => buildTopology(entities.items, relationships.items),
-    [entities.items, relationships.items]
-  );
-
-  if (!isHealthModelPanelConfigured(configuration)) {
-    return (
-      <PanelMessage height={height}>
-        Configure an Azure Monitor datasource, subscription, and Health Model in the panel options.
-      </PanelMessage>
-    );
-  }
-
-  if (loading && entities.pagesLoaded === 0) {
-    return (
-      <div className={styles.loading} style={{ height }}>
-        <Spinner />
-        <span>Loading Health Model topology...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.container} style={{ height }}>
-        <Alert title="Health Model topology could not be loaded" severity="error">
-          {error}
-        </Alert>
-      </div>
-    );
-  }
+  const layout = React.useMemo(() => buildHealthGraph(entities, relationships), [entities, relationships]);
 
   if (layout.nodes.length === 0) {
-    return <PanelMessage height={height}>The selected Health Model does not contain any entities.</PanelMessage>;
+    return null;
   }
 
-  const showLabels = options.showRelationshipLabels ?? true;
   const canvasWidth = layout.width + CANVAS_PADDING * 2;
   const canvasHeight = layout.height + CANVAS_PADDING * 2;
-  // Scaling down keeps wide models readable without forcing horizontal scrolling. The canvas is
-  // never enlarged past its natural size, so a small model keeps its designed proportions.
-  const scale =
-    options.fitToPanel === false
-      ? 1
-      : Math.min(1, (width - CANVAS_PADDING) / canvasWidth, (height - CANVAS_PADDING) / canvasHeight);
+  // Deep models are scaled down so the whole graph stays visible without the page growing
+  // unbounded. The canvas is never enlarged, so a small model keeps its designed proportions.
+  const scale = Math.min(1, MAX_CANVAS_HEIGHT / canvasHeight);
 
   return (
-    <div className={styles.container} style={{ height }}>
+    <div className={styles.container}>
       {layout.danglingRelationships > 0 && (
         <Alert title="Some relationships were skipped" severity="info">
           {layout.danglingRelationships} relationship(s) reference an entity that is not part of this Health Model.
@@ -102,22 +66,21 @@ export function HealthModelTopologyPanel({
             ))}
           </svg>
 
-          {showLabels &&
-            layout.edges
-              .filter((edge) => edge.label)
-              .map((edge) => (
-                <div
-                  key={`${edge.id}-label`}
-                  className={styles.edgeLabel}
-                  style={{
-                    left: edge.labelX + CANVAS_PADDING,
-                    top: edge.labelY + CANVAS_PADDING,
-                  }}
-                  title={edge.label}
-                >
-                  {edge.label}
-                </div>
-              ))}
+          {layout.edges
+            .filter((edge) => edge.label)
+            .map((edge) => (
+              <div
+                key={`${edge.id}-label`}
+                className={styles.edgeLabel}
+                style={{
+                  left: edge.labelX + CANVAS_PADDING,
+                  top: edge.labelY + CANVAS_PADDING,
+                }}
+                title={edge.label}
+              >
+                {edge.label}
+              </div>
+            ))}
 
           {layout.nodes.map((node) => (
             <EntityCard key={node.name} node={node} layoutOptions={layout.options} />
@@ -128,7 +91,7 @@ export function HealthModelTopologyPanel({
   );
 }
 
-function EntityCard({ node, layoutOptions }: { node: TopologyNode; layoutOptions: TopologyLayoutOptions }) {
+function EntityCard({ node, layoutOptions }: { node: HealthGraphNode; layoutOptions: HealthGraphLayoutOptions }) {
   const styles = useStyles2(getStyles);
   const theme = useTheme2();
   const healthState = node.healthState ?? 'Unknown';
@@ -159,18 +122,9 @@ function EntityCard({ node, layoutOptions }: { node: TopologyNode; layoutOptions
   );
 }
 
-function PanelMessage({ height, children }: { height: number; children: React.ReactNode }) {
-  const styles = useStyles2(getStyles);
-  return (
-    <div className={styles.panelMessage} style={{ height }}>
-      {children}
-    </div>
-  );
-}
-
 // Draws the parent-to-child connector as a vertical drop, a horizontal run, and a second drop so
 // that sibling edges do not cross one another.
-export function buildConnectorPath(edge: TopologyEdge): string {
+export function buildConnectorPath(edge: HealthGraphEdge): string {
   const parentX = edge.parentX + CANVAS_PADDING;
   const parentY = edge.parentY + CANVAS_PADDING;
   const childX = edge.childX + CANVAS_PADDING;
@@ -216,12 +170,8 @@ function getStyles(theme: GrafanaTheme2) {
       display: 'flex',
       flexDirection: 'column',
       gap: theme.spacing(1),
-      padding: theme.spacing(1),
-      height: '100%',
     }),
     scrollArea: css({
-      flex: 1,
-      minHeight: 0,
       overflow: 'auto',
     }),
     canvas: css({
@@ -294,21 +244,6 @@ function getStyles(theme: GrafanaTheme2) {
       display: '-webkit-box',
       WebkitLineClamp: 3,
       WebkitBoxOrient: 'vertical',
-    }),
-    loading: css({
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: theme.spacing(1),
-      color: theme.colors.text.secondary,
-    }),
-    panelMessage: css({
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: theme.spacing(2),
-      color: theme.colors.text.secondary,
-      textAlign: 'center',
     }),
   };
 }
