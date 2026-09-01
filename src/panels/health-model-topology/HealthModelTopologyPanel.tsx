@@ -292,7 +292,7 @@ function getStyles(theme: GrafanaTheme2) {
       pointerEvents: 'none',
       overflow: 'hidden',
       display: '-webkit-box',
-      WebkitLineClamp: 2,
+      WebkitLineClamp: 3,
       WebkitBoxOrient: 'vertical',
     }),
     loading: css({
