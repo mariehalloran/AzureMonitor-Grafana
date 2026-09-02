@@ -37,11 +37,6 @@
       "addToNav": false
     },
     {
-      "type": "datasource",
-      "name": "Azure Health Models",
-      "path": "datasources/health-models/plugin.json"
-    },
-    {
       "type": "page",
       "name": "Azure Cloud Native Monitoring",
       "path": "/a/%PLUGIN_ID%/clusternavigation",
