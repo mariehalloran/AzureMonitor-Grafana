@@ -14,9 +14,8 @@ The app now has a **Health Models** tab that:
 - Follows ARM continuation links with a bounded page limit and identifies partial results.
 - Handles model, entity, and relationship failures independently so available data remains visible.
 
-The app also bundles an **Azure Health Models** data source, which returns the same models as
-frames so they can be placed on ordinary dashboards using Grafana's built-in Node graph and Table
-panels. A bundled dashboard wiring those together is available from the app's Dashboards tab.
+To place the same data on an ordinary dashboard, use the Azure Monitor datasource's built-in
+**Azure Health Models** query type rather than this page.
 
 The implementation is split across the following files:
 
@@ -70,16 +69,5 @@ Model, entity, and relationship lists can be paged and large. The API adapter fo
 - One subscription is selected at a time.
 - Entity history is loaded on demand for the previous 24 hours; the page does not yet expose a configurable history range.
 - Signal history and data annotations are not displayed.
-- Relationships are counted but not yet rendered as a dependency graph.
 - Model configuration and write operations are intentionally excluded.
 - The custom Health Models data-plane audience is not used; this experience calls the ARM control-plane API.
-
-## Local visual sandbox
-
-A development build can render the page from a local snapshot without configuring Azure credentials in Grafana. Place the generated snapshot at `dist/health-models-sandbox.json`, start the local Grafana development environment, then open:
-
-```text
-http://localhost:3000/a/azure-monitor-app/clusternavigation/healthmodels?healthModelsMock=1
-```
-
-Mock mode is accepted only when Webpack builds the plugin in development mode. `HealthModelsMockApi.ts` loads the ignored snapshot and implements the same `HealthModelsClient` contract as the production ARM adapter. The page therefore exercises the normal Scene lifecycle, model selection, health summaries, and entity rendering without making Azure requests from the browser. Optional history can be supplied in a `historyByEntity` object keyed by full entity resource ID. The snapshot can contain subscription resource data and must never be committed.

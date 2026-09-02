@@ -4,4 +4,4 @@
 
 Initial release.
 
-- Add a read-only Azure Health Models preview page, with an accompanying data source and dashboard panels.
+- Add a read-only Azure Health Models preview page.

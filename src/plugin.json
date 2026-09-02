@@ -31,12 +31,6 @@
   },
   "includes": [
     {
-      "type": "dashboard",
-      "name": "Azure Health Models",
-      "path": "dashboards/health-models.json",
-      "addToNav": false
-    },
-    {
       "type": "page",
       "name": "Azure Cloud Native Monitoring",
       "path": "/a/%PLUGIN_ID%/clusternavigation",
