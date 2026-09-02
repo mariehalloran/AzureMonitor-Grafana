@@ -9,8 +9,6 @@ export interface EntitySignalStatus {
 }
 
 export interface EntityHealthMetrics {
-  /** Most recent `reportedAt` across every signal, i.e. when the entity was last evaluated. */
-  lastCheckedAt?: string;
   signals: EntitySignalStatus[];
   /** Azure Resource Health availability, when the entity is backed by an Azure resource. */
   availabilityState?: string;
@@ -81,11 +79,10 @@ export function getEntityHealthMetrics(entity: HealthModelEntity): EntityHealthM
     visit(group, toLabel(groupName));
   }
 
-  // Sorting newest first means the first entry is also the entity's last evaluation.
+  // Newest first, so the most recently reported signals lead.
   signals.sort((left, right) => compareTimestampsDescending(left.reportedAt, right.reportedAt));
 
   return {
-    lastCheckedAt: signals.find((signal) => signal.reportedAt)?.reportedAt,
     signals,
     availabilityState,
     summary,
@@ -157,32 +154,4 @@ export function describeSignals(metrics: EntityHealthMetrics): string {
 
   const healthy = metrics.signals.filter((signal) => signal.healthState?.toLowerCase() === 'healthy').length;
   return `${healthy}/${metrics.signals.length} healthy`;
-}
-
-const MINUTE_MS = 60_000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
-
-/**
- * Formats a timestamp as a short age such as `4m ago`. Health checks report continuously, so how
- * stale a reading is matters more at a glance than the absolute time.
- */
-export function formatRelativeTime(timestamp: string, now = Date.now()): string {
-  const reportedAt = Date.parse(timestamp);
-  if (Number.isNaN(reportedAt)) {
-    return '--';
-  }
-
-  const elapsed = now - reportedAt;
-  // Small clock differences between Azure and the browser should not read as a future timestamp.
-  if (elapsed < MINUTE_MS) {
-    return 'just now';
-  }
-  if (elapsed < HOUR_MS) {
-    return `${Math.floor(elapsed / MINUTE_MS)}m ago`;
-  }
-  if (elapsed < DAY_MS) {
-    return `${Math.floor(elapsed / HOUR_MS)}h ago`;
-  }
-  return `${Math.floor(elapsed / DAY_MS)}d ago`;
 }

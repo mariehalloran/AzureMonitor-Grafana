@@ -22,7 +22,7 @@ import {
 import { HealthStateBadge } from './HealthStateBadge';
 import { formatHealthTimestamp, HealthTimelineBar } from './HealthTimelineBar';
 import { HealthGraph } from './HealthGraph';
-import { describeSignals, formatRelativeTime, getEntityHealthMetrics } from './entityHealthMetrics';
+import { describeSignals, getEntityHealthMetrics } from './entityHealthMetrics';
 import { summarizeHealthStates } from './healthModelUtils';
 import {
   EntityHistoryResult,
@@ -621,7 +621,6 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
               <tr>
                 <th>Name</th>
                 <th>Health state</th>
-                <th>Last checked</th>
                 <th>Signals</th>
                 <th>Alerts</th>
                 <th>Impact</th>
@@ -651,9 +650,6 @@ function HealthModelOverviewRenderer({ model }: SceneComponentProps<HealthModelO
                       </td>
                       <td>
                         <HealthStateBadge healthState={entity.properties?.healthState} />
-                      </td>
-                      <td title={metrics.lastCheckedAt ? formatHealthTimestamp(metrics.lastCheckedAt) : undefined}>
-                        {metrics.lastCheckedAt ? formatRelativeTime(metrics.lastCheckedAt) : '--'}
                       </td>
                       <td>{describeSignals(metrics)}</td>
                       <td>{metrics.alertSeverities.length > 0 ? metrics.alertSeverities.join(', ') : '--'}</td>
