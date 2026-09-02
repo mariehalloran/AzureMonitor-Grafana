@@ -14,7 +14,7 @@ This Grafana App Plugin provides a seamless and enhanced monitoring experience f
 
 **Enhanced Troubleshooting**: It improves the AKS troubleshooting experience by providing better navigation, a range of supported visualizations, and keeping users in the same context.
 
-**Health Models (preview)**: Users can select an Azure Health Model and view its entity health summary, dependency graph, and per-entity health timelines. The experience is read-only; model configuration remains in Azure. Two panels, Azure Health Model Graph and Azure Health Model Timeline, are also available from the dashboard visualization picker.
+**Health Models (preview)**: It shows the health of an Azure Health Model's entities, as a dependency graph and as per-entity health timelines.
 
 ## Requirements
 
@@ -28,7 +28,6 @@ Regardless of the Azure Authentication method you are using, the following are t
 
 - **Azure Monitor**: Monitoring Reader
 - **Azure Managed Prometheus**: Monitoring Data Reader
-- **Azure Health Models**: Reader access to the target `Microsoft.CloudHealth/healthmodels` resources
 
 ## Getting started
 If this plugin has not yet been enabled on your Grafana instance, Click on Install then Enable. This will automatically add an entry point on your Grafana navigation bar under Apps

@@ -6,9 +6,9 @@
   "links": [],
   "panels": [
     {
-      "type": "azure-health-model-graph-panel",
-      "title": "Health graph",
-      "description": "Entities coloured by health state, connected by their parent and child relationships.",
+      "type": "nodeGraph",
+      "title": "Model graph",
+      "description": "Entities coloured by health state, connected by their relationships.",
       "id": 1,
       "gridPos": { "h": 15, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
@@ -24,29 +24,11 @@
       "options": {}
     },
     {
-      "type": "azure-health-model-timeline-panel",
-      "title": "Health history",
-      "description": "Expand an entity to load its health state timeline.",
-      "id": 2,
-      "gridPos": { "h": 13, "w": 10, "x": 0, "y": 15 },
-      "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
-          "subscriptionId": "${subscription}",
-          "healthModelId": "${healthmodel}",
-          "resultFormat": "nodeGraph"
-        }
-      ],
-      "options": { "historyHours": 24 }
-    },
-    {
       "type": "table",
       "title": "Entities",
       "description": "Health state, last checked, signal counts, and configured alerts for each entity.",
       "id": 3,
-      "gridPos": { "h": 13, "w": 14, "x": 10, "y": 15 },
+      "gridPos": { "h": 13, "w": 24, "x": 0, "y": 15 },
       "datasource": { "type": "azure-health-models-datasource", "uid": "${healthmodels_ds}" },
       "targets": [
         {

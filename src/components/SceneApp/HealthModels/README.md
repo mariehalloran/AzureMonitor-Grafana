@@ -14,12 +14,9 @@ The app now has a **Health Models** tab that:
 - Follows ARM continuation links with a bounded page limit and identifies partial results.
 - Handles model, entity, and relationship failures independently so available data remains visible.
 
-The app also bundles two nested dashboard panel plugins:
-
-- **Azure Health Model Entities** renders the entity table with expandable health history timelines.
-- **Azure Health Model Health Distribution** renders current entity health counts as a pie or donut chart.
-
-Both panels are selectable from Grafana's standard dashboard visualization picker and use panel options to select the Azure Monitor datasource, subscription, and Health Model.
+The app also bundles an **Azure Health Models** data source, which returns the same models as
+frames so they can be placed on ordinary dashboards using Grafana's built-in Node graph and Table
+panels. A bundled dashboard wiring those together is available from the app's Dashboards tab.
 
 The implementation is split across the following files:
 

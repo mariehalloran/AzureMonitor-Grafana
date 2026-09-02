@@ -23,8 +23,6 @@ This plugin has a dependence on users having configured Azure Monitor and Promet
 
 **Enhanced Troubleshooting**: It improves the AKS troubleshooting experience by providing better navigation, a range of supported visualizations, and keeping users in the same context.
 
-**Health Models (preview)**: It lists Azure Health Models and summarizes the health of their entities, including a dependency graph and per-entity health timelines. Requests go to the `Microsoft.CloudHealth` Health Models API through the configured Azure Monitor datasource, which supplies the authenticated ARM transport.
-
 ### Benefits
 
 - Reduces the cognitive load for users by minimizing the information they need to know to start their troubleshooting journey.
@@ -46,7 +44,6 @@ This plugin will be shipped as part of Grafana's [plugin catalog](https://grafan
 - A Grafana instance running on 10.4+
 - An Azure Monitor datasource configured with the right access to your AKS clusters
 - A Prometheus datasource configured with the Azure Monitor Workspace that has been onboarded to monitor your clusters.
-- For Health Models, Azure Reader access to the target `Microsoft.CloudHealth/healthmodels` resources.
 
 <!-----------------------[  Installing  ]-------------------<optional> section below------------------>
 ### Installing
